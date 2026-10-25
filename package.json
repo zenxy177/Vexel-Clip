@@ -1,0 +1,65 @@
+{
+  "name": "velex-clip",
+  "private": true,
+  "version": "0.1.1",
+  "description": "Replay capture and clip library for Windows desktop and web.",
+  "author": "Velex Clip",
+  "type": "module",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/zenxy177/Vexel-Clip.git"
+  },
+  "homepage": "https://github.com/zenxy177/Vexel-Clip",
+  "main": "electron\\main.cjs",
+  "engines": {
+    "node": ">=22.12.0"
+  },
+  "scripts": {
+    "dev": "vite --host 127.0.0.1",
+    "build": "vite build",
+    "preview": "vite preview --host 127.0.0.1",
+    "desktop:dev": "concurrently -k -s first \"vite --host 127.0.0.1 --port 5173 --strictPort\" \"wait-on http://127.0.0.1:5173 && electron .\"",
+    "desktop:pack": "npm run build && electron-builder --dir --win",
+    "desktop:dist": "npm run build && electron-builder --win nsis"
+  },
+  "devDependencies": {
+    "concurrently": "^9.2.5",
+    "electron": "^45.0.0",
+    "electron-builder": "^26.18.0",
+    "vite": "^6.4.1",
+    "wait-on": "^8.0.5"
+  },
+  "build": {
+    "appId": "com.velex.clip",
+    "productName": "Velex Clip",
+    "publish": [
+      {
+        "provider": "github",
+        "owner": "zenxy177",
+        "repo": "Vexel-Clip"
+      }
+    ],
+    "directories": {
+      "output": "release"
+    },
+    "files": [
+      "dist/**/*",
+      "electron/**/*",
+      "package.json"
+    ],
+    "win": {
+      "target": [
+        "nsis"
+      ]
+    },
+    "nsis": {
+      "oneClick": false,
+      "perMachine": false,
+      "allowToChangeInstallationDirectory": true,
+      "createDesktopShortcut": true,
+      "createStartMenuShortcut": true,
+      "shortcutName": "Velex Clip",
+      "uninstallDisplayName": "Velex Clip"
+    }
+  }
+}

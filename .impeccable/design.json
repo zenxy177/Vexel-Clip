@@ -1,0 +1,218 @@
+{
+  "schemaVersion": 2,
+  "generatedAt": "2026-10-24T21:27:35.323Z",
+  "title": "Design System: Velex Clip",
+  "extensions": {
+    "colorMeta": {
+      "signal-orange": {
+        "role": "primary",
+        "displayName": "Signal Orange",
+        "canonical": "#dd603e",
+        "tonalRamp": ["#1a0401", "#3f1004", "#681d06", "#942c0c", "#be4320", "#e16341", "#fda38b", "#fee9e3"]
+      },
+      "signal-orange-deep": {
+        "role": "primary",
+        "displayName": "Deep Signal Orange",
+        "canonical": "#bd482b",
+        "tonalRamp": ["#1c0300", "#410d02", "#6c1701", "#992501", "#bb4629", "#de6648", "#faa58f", "#fee9e4"]
+      },
+      "ink-blue": {
+        "role": "secondary",
+        "displayName": "Instrument Blue",
+        "canonical": "#334fbd",
+        "tonalRamp": ["#020231", "#0a086a", "#182794", "#2d47b5", "#4667d7", "#6286f9", "#a4bcfa", "#e8eefe"]
+      },
+      "ink": {
+        "role": "neutral",
+        "displayName": "Ink",
+        "canonical": "#1a2433",
+        "tonalRamp": ["#040b18", "#182231", "#303b4b", "#4b5667", "#667285", "#8390a3", "#b1bfd3", "#e6effd"]
+      },
+      "muted": {
+        "role": "neutral",
+        "displayName": "Muted Slate",
+        "canonical": "#6d7784",
+        "tonalRamp": ["#050c15", "#1a222d", "#323b47", "#4d5662", "#69737f", "#86909e", "#b4bfcd", "#e4f0fe"]
+      },
+      "rule": {
+        "role": "neutral",
+        "displayName": "Rule Gray",
+        "canonical": "#d9dcd9",
+        "tonalRamp": ["#0a0c0a", "#202220", "#393b39", "#535653", "#707270", "#8d908d", "#bcbfbc", "#ecefec"]
+      },
+      "warm-silver": {
+        "role": "neutral",
+        "displayName": "Warm Silver",
+        "canonical": "#f3f3ef",
+        "tonalRamp": ["#0b0b09", "#22221f", "#3b3b38", "#555552", "#72726e", "#8f8f8c", "#bebeba", "#efefeb"]
+      },
+      "white": {
+        "role": "neutral",
+        "displayName": "White",
+        "canonical": "#fff",
+        "tonalRamp": ["#0b0b0b", "#222222", "#3a3a3a", "#555555", "#717171", "#8f8f8f", "#bebebe", "#eeeeee"]
+      },
+      "signal-green": {
+        "role": "tertiary",
+        "displayName": "Signal Green",
+        "canonical": "#3c8e6e",
+        "tonalRamp": ["#010f08", "#02291b", "#014631", "#006548", "#2f8363", "#51a281", "#80d1ae", "#c1ffe2"]
+      }
+    },
+    "typographyMeta": {
+      "display": {
+        "displayName": "Display",
+        "purpose": "Responsive page headings in the system sans stack."
+      },
+      "body": {
+        "displayName": "Body",
+        "purpose": "Turkish interface and explanatory copy in the system sans stack."
+      },
+      "label": {
+        "displayName": "Instrument Label",
+        "purpose": "Compact labels, durations, shortcuts, and metadata in the declared mono stack."
+      }
+    },
+    "shadows": [
+      {
+        "name": "trim-dialog",
+        "value": "0 18px 60px rgb(8 17 33 / 25%)",
+        "purpose": "Separates the centered local trim dialog from its dimmed backdrop."
+      },
+      {
+        "name": "toast",
+        "value": "0 8px 24px #1a24331a",
+        "purpose": "Lifts transient feedback above the page without elevating ordinary panels."
+      }
+    ],
+    "motion": [
+      {
+        "name": "control-transition",
+        "value": "0.15s",
+        "purpose": "Short background, border, and transform transitions on controls."
+      },
+      {
+        "name": "live-status-pulse",
+        "value": "1.6s ease-in-out infinite",
+        "purpose": "Pulses the active capture status indicator."
+      },
+      {
+        "name": "recording-indicator-pulse",
+        "value": "1.4s infinite",
+        "purpose": "Pulses the recording mark inside the live source view."
+      }
+    ],
+    "breakpoints": [
+      {
+        "name": "rail-compact",
+        "value": "1050px"
+      },
+      {
+        "name": "bottom-navigation",
+        "value": "780px"
+      },
+      {
+        "name": "narrow-controls",
+        "value": "460px"
+      }
+    ]
+  },
+  "components": [
+    {
+      "name": "Save Button",
+      "kind": "button",
+      "refersTo": "button-primary",
+      "description": "The primary action that saves the buffered clip.",
+      "html": "<button class=\"ds-save\"><svg viewBox=\"0 0 24 24\" aria-hidden=\"true\"><path d=\"M4 7.5h3l1.5-2h7L17 7.5h3v11H4z\"/><circle cx=\"12\" cy=\"13\" r=\"3.5\"/></svg><span>Klip al</span><kbd>Ctrl&nbsp;Shift&nbsp;S</kbd></button>",
+      "css": ".ds-save { display: inline-flex; min-height: 39px; align-items: center; justify-content: center; gap: 8px; padding: 0 13px; border: 1px solid var(--orange-dark); border-radius: 3px; background: var(--orange); color: #fff; font: 700 11px 'Segoe UI Variable', 'Segoe UI', sans-serif; cursor: pointer; transition: background .15s, border-color .15s, transform .15s; } .ds-save svg { width: 16px; height: 16px; fill: none; stroke: currentColor; stroke-width: 1.7; stroke-linecap: round; stroke-linejoin: round; } .ds-save kbd { padding: 4px 5px; border: 1px solid rgb(255 255 255 / 33%); border-radius: 2px; color: #fff4ef; font: 9px 'DM Mono', 'Consolas', monospace; } .ds-save:hover { transform: translateY(-1px); border-color: var(--orange-dark); background: var(--orange-dark); } .ds-save:focus-visible { outline: 3px solid #718be9; outline-offset: 3px; } .ds-save:active { transform: translateY(0); }"
+    },
+    {
+      "name": "Source Button",
+      "kind": "button",
+      "refersTo": "button-secondary",
+      "description": "A restrained secondary action for choosing or stopping a capture source.",
+      "html": "<button class=\"ds-source\"><svg viewBox=\"0 0 24 24\" aria-hidden=\"true\"><path d=\"M12 5v14M5 12h14\"/></svg>Kaynak seç</button>",
+      "css": ".ds-source { display: inline-flex; min-height: 38px; align-items: center; justify-content: center; gap: 8px; padding: 0 12px; border: 1px solid #ccd1ce; border-radius: 3px; background: #f7f8f5; color: #445261; font: 700 10px 'Segoe UI Variable', 'Segoe UI', sans-serif; cursor: pointer; transition: background .15s, border-color .15s, transform .15s; } .ds-source svg { width: 15px; height: 15px; fill: none; stroke: currentColor; stroke-width: 1.7; stroke-linecap: round; stroke-linejoin: round; } .ds-source:hover { border-color: #8698d8; background: #edf0fb; } .ds-source:focus-visible { outline: 3px solid #718be9; outline-offset: 3px; } .ds-source:active { transform: translateY(1px); }"
+    },
+    {
+      "name": "Settings Field",
+      "kind": "input",
+      "refersTo": "input-field",
+      "description": "A compact settings value field with a quiet surface and monospaced content.",
+      "html": "<label class=\"ds-field\"><span>Project URL</span><input type=\"url\" placeholder=\"https://proje-id.supabase.co\"/></label>",
+      "css": ".ds-field { display: block; color: #4c5968; font: 700 10px 'Segoe UI Variable', 'Segoe UI', sans-serif; } .ds-field span { display: block; margin-bottom: 7px; } .ds-field input { width: 100%; min-height: 40px; padding: 0 11px; border: 1px solid #cfd5d1; border-radius: 3px; background: #fafbf8; color: var(--ink); font: 11px 'DM Mono', 'Consolas', monospace; } .ds-field input::placeholder { color: #a0a9a6; } .ds-field input:focus-visible { outline: 3px solid #718be9; outline-offset: 3px; }"
+    },
+    {
+      "name": "Active Navigation Item",
+      "kind": "nav",
+      "refersTo": "nav-item-active",
+      "description": "Selected rail navigation with a pale blue state and compact index.",
+      "html": "<button class=\"ds-nav\"><svg viewBox=\"0 0 24 24\" aria-hidden=\"true\"><path d=\"M4 7.5h3l1.5-2h7L17 7.5h3v11H4z\"/><circle cx=\"12\" cy=\"13\" r=\"3.5\"/></svg><span>Yakalama</span><kbd>01</kbd></button>",
+      "css": ".ds-nav { display: flex; min-height: 44px; align-items: center; gap: 12px; width: 100%; padding: 0 11px; border: 0; border-radius: 4px; background: #dce2f3; color: #293f9d; text-align: left; font: 600 12px 'Segoe UI Variable', 'Segoe UI', sans-serif; cursor: pointer; } .ds-nav svg { width: 17px; height: 17px; fill: none; stroke: var(--blue); stroke-width: 1.7; stroke-linecap: round; stroke-linejoin: round; } .ds-nav span { flex: 1; } .ds-nav kbd { color: #929aa0; font: 10px 'DM Mono', 'Consolas', monospace; } .ds-nav:hover { background: #d3daf0; } .ds-nav:focus-visible { outline: 3px solid #718be9; outline-offset: 3px; }"
+    },
+    {
+      "name": "Capture Bench",
+      "kind": "card",
+      "refersTo": "capture-bench",
+      "description": "A square, ruled work surface grouping source preview and capture controls.",
+      "html": "<section class=\"ds-bench\"><header><b>A</b><strong>Yakalama istasyonu</strong><small>VX—01 / STANDBY</small></header><div class=\"ds-bench-body\">Bir kaynak seç</div><footer>Oyun, uygulama penceresi veya ekran</footer></section>",
+      "css": ".ds-bench { min-width: 0; border: 1px solid #d5d9d6; background: #fafaf7; color: var(--ink); } .ds-bench header { display: flex; min-height: 50px; align-items: center; gap: 10px; padding: 0 17px; border-bottom: 1px solid #e0e3df; } .ds-bench header b { display: grid; width: 23px; height: 23px; place-items: center; background: #e4e8f4; color: var(--blue); font: 11px 'DM Mono', 'Consolas', monospace; } .ds-bench header strong { font: 700 12px 'Segoe UI Variable', 'Segoe UI', sans-serif; } .ds-bench header small { margin-left: auto; color: #a2a9a5; font: 9px 'DM Mono', 'Consolas', monospace; } .ds-bench-body { display: grid; min-height: 80px; place-items: center; background: #202d45; color: #fff; font: 600 14px 'Segoe UI Variable', 'Segoe UI', sans-serif; } .ds-bench footer { padding: 13px 17px; border-top: 1px solid #e0e3df; color: var(--muted); font: 10px 'Segoe UI Variable', 'Segoe UI', sans-serif; }"
+    },
+    {
+      "name": "Capture Status Chip",
+      "kind": "chip",
+      "refersTo": "session-chip",
+      "description": "An outlined status label that distinguishes waiting from active capture.",
+      "html": "<span class=\"ds-status\"><i></i>YAKALAMA AÇIK</span>",
+      "css": ".ds-status { display: inline-flex; align-items: center; gap: 8px; padding: 8px 10px; border: 1px solid #e6c6bd; border-radius: 3px; color: #a84b31; font: 500 9px 'DM Mono', 'Consolas', monospace; letter-spacing: .055em; } .ds-status i { width: 7px; height: 7px; flex: 0 0 auto; border-radius: 50%; background: var(--orange); animation: ds-pulse 1.6s ease-in-out infinite; } @keyframes ds-pulse { 50% { box-shadow: 0 0 0 4px rgb(221 96 62 / 13%); } }"
+    },
+    {
+      "name": "Rewind Instrument",
+      "kind": "custom",
+      "refersTo": "rewind-instrument",
+      "description": "A ruled status instrument showing elapsed buffer, target duration, and fill.",
+      "html": "<section class=\"ds-rewind\"><div class=\"ds-rewind-head\"><span>GERİ SARMA BANDI</span><small><i></i>TAMPON DOLUYOR</small></div><div class=\"ds-readout\"><strong>00:18</strong><span>/ 00:30</span></div><div class=\"ds-markers\"><span>00:00</span><span>00:15</span><span>00:30</span></div><div class=\"ds-track\"><i class=\"ds-fill\"></i><i class=\"ds-playhead\"></i><span class=\"ds-ticks\"></span></div><div class=\"ds-foot\"><span>12 sn daha dolduruluyor</span><span>60%</span></div></section>",
+      "css": ".ds-rewind { display: flex; min-height: 190px; flex-direction: column; padding: 17px; border: 1px solid #d5d9d6; background: #eceee9; color: var(--ink); } .ds-rewind-head,.ds-rewind-head small,.ds-markers,.ds-foot { display: flex; align-items: center; justify-content: space-between; } .ds-rewind-head { gap: 8px; color: #737f87; font: 500 9px 'DM Mono', 'Consolas', monospace; letter-spacing: .09em; } .ds-rewind-head small { gap: 6px; color: #909995; font: 9px 'DM Mono', 'Consolas', monospace; letter-spacing: 0; white-space: nowrap; } .ds-rewind-head i { width: 6px; height: 6px; border-radius: 50%; background: var(--orange); } .ds-readout { margin-top: 25px; } .ds-readout strong { font: 500 37px 'DM Mono', 'Consolas', monospace; letter-spacing: -.08em; } .ds-readout span { color: #919a98; font: 12px 'DM Mono', 'Consolas', monospace; } .ds-markers,.ds-foot { color: #8e9795; font: 8px 'DM Mono', 'Consolas', monospace; } .ds-markers { margin: 22px 0 9px; } .ds-track { position: relative; height: 29px; border: 1px solid #cbd0cb; background: #f6f7f3; } .ds-fill { position: absolute; inset: 0 40% 0 0; background: #d7e1d8; } .ds-ticks { position: absolute; inset: 0; background: repeating-linear-gradient(90deg, transparent 0 calc(2.08% - 1px), #c5ccc7 calc(2.08% - 1px) 2.08%); } .ds-playhead { position: absolute; top: -5px; bottom: -5px; left: 60%; width: 2px; background: var(--orange); } .ds-foot { margin-top: 9px; color: #8b9592; font-size: 9px; }"
+    }
+  ],
+  "narrative": {
+    "northStar": "The Rewind Bench",
+    "overview": "Velex Clip's interface reads as a compact recording instrument set into a warm-silver workbench. Ink-blue labels organize the controls; a ruled rewind track, elapsed-time readout, source viewfinder, and one signal-orange save action make the capture state legible before the clip becomes a library item. The metaphor comes from the implemented bench and ruler, not a decorative dashboard skin.\n\nThe capture workspace gives the live source and rewind instrument priority, with the save action beside the source controls. The clip library, trim dialog, and optional cloud setup use the same quiet surfaces, fine rules, compact labels, and restrained color signals. In browser mode, capture is permissioned and page-scoped. The Windows desktop mode extends the same capture task with a native source picker, global shortcut, and system tray.",
+    "keyCharacteristics": [
+      "Instrument-first capture bench, not a gallery-first dashboard.",
+      "Warm-silver surfaces, ink-blue wayfinding, and a scarce signal-orange action.",
+      "Fine rules, compact monospaced instrument labels, and mostly flat rectangular panels."
+    ],
+    "rules": [
+      {
+        "name": "The Signal Discipline Rule",
+        "body": "Reserve orange for the save/capture signal and its closely related live-state indicators; use blue for selection and navigation, not as a competing save action.",
+        "section": "colors"
+      },
+      {
+        "name": "The Instrument Label Rule",
+        "body": "Keep time values, shortcuts, serials, and compact control labels in the monospaced stack; use the system sans for sentences and headings.",
+        "section": "typography"
+      },
+      {
+        "name": "The Flat Bench Rule",
+        "body": "Do not add ambient shadows to the resting capture panels; use the existing tonal surface steps and fine borders to establish structure.",
+        "section": "elevation"
+      }
+    ],
+    "dos": [
+      "Do keep the source view, rewind ruler, duration control, and save action together in the capture bench.",
+      "Do use `colors.signal-orange` for the save signal and `colors.ink-blue` for selection and wayfinding.",
+      "Do use fine rules and tonal surfaces before introducing depth.",
+      "Do preserve Turkish interface copy and the browser permission/page-focus limitations in any capture-state guidance.",
+      "Do keep local clip review and trimming visually coherent with the capture workbench."
+    ],
+    "donts": [
+      "Don't replace the capture-first workspace with a gallery-first dashboard.",
+      "Don't spread orange across large surfaces or use it as a decorative accent.",
+      "Don't imply background recording or a global shortcut in browser mode; those behaviors are available only in the Windows desktop app.",
+      "Don't imply cloud storage is ready by default; connection setup is optional and user-configured.",
+      "Don't use shadows on ordinary resting panels or round every edge into a pill."
+    ]
+  }
+}
