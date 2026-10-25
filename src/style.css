@@ -546,6 +546,36 @@ svg { width: 19px; height: 19px; fill: none; stroke: currentColor; stroke-width:
 .quality-btn:hover { border-color: var(--blue); }
 .quality-btn.active { border-color: var(--blue); background: var(--bg-active); color: var(--blue-text); }
 .quality-btn.active small { color: var(--blue-text); }
+
+.custom-quality-panel { margin-top: 18px; padding: 18px; border: 1px solid var(--line); background: var(--bg-surface-alt); border-radius: 4px; transition: border-color .2s ease, box-shadow .2s ease; }
+.custom-quality-panel.is-active-highlight { border-color: var(--blue); box-shadow: 0 0 16px rgba(74, 114, 250, 0.12); }
+.custom-panel-head { display: flex; align-items: center; justify-content: space-between; gap: 12px; flex-wrap: wrap; margin-bottom: 8px; }
+.custom-head-title h3 { margin: 4px 0 0; font-size: 14px; font-weight: 700; letter-spacing: -.02em; color: var(--ink); }
+.custom-head-badge { display: inline-flex; align-items: center; gap: 6px; font: 700 9px var(--mono); color: var(--blue-text); letter-spacing: .08em; text-transform: uppercase; }
+.custom-est-badge { display: inline-flex; align-items: center; gap: 6px; padding: 5px 10px; background: var(--bg-input); border: 1px solid var(--line); border-radius: 3px; font: 11px var(--mono); }
+.custom-est-badge .est-label { color: var(--muted); font-size: 10px; }
+.custom-est-badge .est-val { color: var(--green); font-weight: 700; font-size: 11px; }
+.custom-panel-desc { margin: 0 0 16px; color: var(--muted); font-size: 11px; line-height: 1.5; }
+.custom-controls-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(230px, 1fr)); gap: 14px; }
+.custom-control-box { display: flex; flex-direction: column; gap: 8px; padding: 12px; background: var(--bg-surface); border: 1px solid var(--line); border-radius: 3px; }
+.custom-control-label { display: flex; align-items: center; justify-content: space-between; gap: 8px; font: 700 11px var(--mono); color: var(--ink); }
+.custom-hint-tag { font: 600 9px var(--mono); color: var(--muted); background: var(--bg-input); padding: 2px 6px; border-radius: 2px; }
+.custom-input-group { display: flex; align-items: center; background: var(--bg-input); border: 1px solid var(--line); border-radius: 3px; transition: border-color .15s ease; }
+.custom-input-group:focus-within { border-color: var(--blue); }
+.custom-num-input { flex: 1; min-width: 0; padding: 8px 10px; background: transparent; border: none; color: var(--ink); font: 700 13px var(--mono); outline: none; }
+.custom-unit { padding: 0 10px; font: 600 11px var(--mono); color: var(--dim); user-select: none; }
+.custom-res-inputs { display: flex; align-items: center; gap: 6px; }
+.res-multiplier { font: 700 13px var(--mono); color: var(--dim); user-select: none; }
+.quick-chip-row { display: flex; align-items: center; gap: 5px; flex-wrap: wrap; margin-top: 2px; }
+.chip-label { font: 600 9px var(--mono); color: var(--muted); }
+.quick-chip-btn { padding: 3px 8px; font: 600 10px var(--mono); color: var(--muted); background: var(--bg-input); border: 1px solid var(--line); border-radius: 3px; cursor: pointer; transition: all .15s ease; }
+.quick-chip-btn:hover { border-color: var(--blue); color: var(--ink); }
+.quick-chip-btn.chip-active { border-color: var(--blue); background: var(--bg-active); color: var(--blue-text); }
+.custom-panel-actions { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; margin-top: 16px; padding-top: 14px; border-top: 1px solid var(--line); }
+.apply-custom-quality-btn { display: inline-flex; align-items: center; gap: 6px; padding: 9px 16px; background: var(--blue); color: #fff; border: 1px solid var(--blue); border-radius: 3px; font: 700 11px var(--mono); cursor: pointer; transition: opacity .15s ease; }
+.apply-custom-quality-btn:hover { opacity: .9; }
+.reset-custom-quality-btn { display: inline-flex; align-items: center; padding: 9px 14px; background: transparent; border: 1px solid var(--line); color: var(--muted); border-radius: 3px; font: 600 10px var(--mono); cursor: pointer; transition: all .15s ease; }
+.reset-custom-quality-btn:hover { border-color: var(--line-strong); color: var(--ink); }
 .cloud-provider-section { padding: 18px; border: 1px solid var(--line); background: var(--bg-surface); border-radius: 3px; }
 .settings-section-title { margin: 4px 0 14px; font-size: 15px; font-weight: 700; letter-spacing: -.03em; color: var(--ink); }
 .free-alternatives-card { border-color: var(--line-strong); background: var(--bg-surface-alt); }

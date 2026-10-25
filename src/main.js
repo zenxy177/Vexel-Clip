@@ -168,7 +168,7 @@ function cloudConfig() {
 // Initial theme apply
 applyTheme(state.theme);
 
-let APP_VERSION = '0.1.5';
+let APP_VERSION = '0.1.6';
 const OFFICIAL_GITHUB_REPO = 'zenxy177/Vexel-Clip';
 const UPDATE_SETTINGS_KEY = 'velex-clip-update-settings';
 
@@ -358,32 +358,73 @@ const QUALITY_SETTINGS_KEY = 'velex-clip-quality-settings';
 const QUALITY_PRESETS = {
   resolutions: [
     { id: 'source', label: 'Kaynak', hint: 'Orijinal ekran / pencere boyutu' },
-    { id: '1080p', label: '1080p', hint: 'Full HD (Maks 1920×1080)' },
-    { id: '720p', label: '720p', hint: 'HD (Maks 1280×720)' },
+    { id: '1440p', label: '1440p (2K)', hint: 'QHD (2560×1440)' },
+    { id: '1080p', label: '1080p (FHD)', hint: 'Full HD (1920×1080)' },
+    { id: '720p', label: '720p (HD)', hint: 'HD (1280×720)' },
+    { id: 'custom', label: 'Özel Boyut', hint: 'Genişlik × Yükseklik tanımla' },
   ],
   fpsList: [
-    { value: 60, label: '60 FPS', hint: 'Akıcı (Oyun için tavsiye edilir)' },
+    { value: 120, label: '120 FPS', hint: 'Ultra Akıcı (Espor / Hızlı Aksiyon)' },
+    { value: 60, label: '60 FPS', hint: 'Akıcı (Oyun için önerilen)' },
     { value: 30, label: '30 FPS', hint: 'Standart (Masaüstü / Tasarruf)' },
+    { value: 'custom', label: 'Özel FPS', hint: '15 - 240 FPS serbest giriş' },
   ],
   bitrates: [
-    { value: 8000000, label: '8 Mbps', hint: 'Yüksek kalite (~60 MB/dk)' },
+    { value: 20000000, label: '20 Mbps', hint: 'Ultra Net (~150 MB/dk)' },
+    { value: 12000000, label: '12 Mbps', hint: 'Yüksek Kalite (~90 MB/dk)' },
+    { value: 8000000, label: '8 Mbps', hint: 'Standart (~60 MB/dk)' },
     { value: 5000000, label: '5 Mbps', hint: 'Dengeli (~37 MB/dk)' },
     { value: 2500000, label: '2.5 Mbps', hint: 'Tasarruflu (~19 MB/dk)' },
+    { value: 'custom', label: 'Özel Bitrate', hint: '1 - 100 Mbps serbest giriş' },
   ],
 };
 
 function getQualitySettings() {
+  const fallback = {
+    resolution: 'source',
+    fps: 60,
+    bitrate: 8000000,
+    isCustomFps: false,
+    customFps: 144,
+    customWidth: 1920,
+    customHeight: 1080,
+    isCustomBitrate: false,
+    customBitrateMbps: 16,
+  };
+
   try {
     const raw = localStorage.getItem(QUALITY_SETTINGS_KEY);
-    if (!raw) return { resolution: 'source', fps: 60, bitrate: 8000000 };
+    if (!raw) return fallback;
     const data = JSON.parse(raw);
+
+    const validResolutions = ['source', '1440p', '1080p', '720p', 'custom'];
+    const resolution = validResolutions.includes(data.resolution) ? data.resolution : 'source';
+
+    const customWidth = Math.max(320, Math.min(7680, Number(data.customWidth) || 1920));
+    const customHeight = Math.max(240, Math.min(4320, Number(data.customHeight) || 1080));
+
+    const customFps = Math.max(15, Math.min(240, Math.round(Number(data.customFps) || 144)));
+    const isCustomFps = Boolean(data.isCustomFps || data.fps === 'custom' || (![30, 60, 120].includes(Number(data.fps)) && Number(data.fps) > 0));
+    const fps = isCustomFps ? customFps : ([30, 60, 120].includes(Number(data.fps)) ? Number(data.fps) : 60);
+
+    const presetBitrates = [20000000, 12000000, 8000000, 5000000, 2500000];
+    const customBitrateMbps = Math.max(1, Math.min(100, Math.round(Number(data.customBitrateMbps) || 16)));
+    const isCustomBitrate = Boolean(data.isCustomBitrate || data.bitrate === 'custom' || (!presetBitrates.includes(Number(data.bitrate)) && Number(data.bitrate) > 0));
+    const bitrate = isCustomBitrate ? (customBitrateMbps * 1000000) : (presetBitrates.includes(Number(data.bitrate)) ? Number(data.bitrate) : 8000000);
+
     return {
-      resolution: ['source', '1080p', '720p'].includes(data.resolution) ? data.resolution : 'source',
-      fps: [30, 60].includes(Number(data.fps)) ? Number(data.fps) : 60,
-      bitrate: [2500000, 5000000, 8000000].includes(Number(data.bitrate)) ? Number(data.bitrate) : 8000000,
+      resolution,
+      customWidth,
+      customHeight,
+      fps,
+      isCustomFps,
+      customFps,
+      bitrate,
+      isCustomBitrate,
+      customBitrateMbps,
     };
   } catch {
-    return { resolution: 'source', fps: 60, bitrate: 8000000 };
+    return fallback;
   }
 }
 
@@ -393,6 +434,25 @@ function saveQualitySettings(settings) {
   } catch (error) {
     console.error('Kalite ayarları kaydedilemedi:', error);
   }
+}
+
+function formatQualityBadge(quality) {
+  let resText = 'KAYNAK';
+  if (quality.resolution === 'custom') {
+    resText = `${quality.customWidth}×${quality.customHeight} (Özel)`;
+  } else if (quality.resolution === '1440p') {
+    resText = '1440P (2K)';
+  } else if (quality.resolution === '1080p') {
+    resText = '1080P (FHD)';
+  } else if (quality.resolution === '720p') {
+    resText = '720P (HD)';
+  }
+
+  const fpsText = quality.isCustomFps ? `${quality.fps} FPS (Özel)` : `${quality.fps} FPS`;
+  const mbps = (quality.bitrate / 1000000).toFixed(1).replace('.0', '');
+  const bitrateText = quality.isCustomBitrate ? `${mbps} MBPS (Özel)` : `${mbps} MBPS`;
+
+  return `${fpsText} · ${bitrateText} · ${resText}`;
 }
 
 function openDatabase() {
@@ -526,7 +586,7 @@ function capturePage() {
   const percent = Math.round((buffered / state.selectedSeconds) * 100);
   const filledTicks = Math.floor((percent / 100) * 48);
   const quality = getQualitySettings();
-  const qualityLabel = `${quality.fps} FPS · ${(quality.bitrate / 1000000).toFixed(0)} Mbps · ${quality.resolution === 'source' ? 'KAYNAK' : quality.resolution.toUpperCase()}`;
+  const qualityLabel = formatQualityBadge(quality);
   return `
     <section class="workspace capture-workspace">
       <div class="page-heading">
@@ -646,6 +706,8 @@ function settingsPage() {
   const activeProvider = getActiveCloudProvider();
   const quality = getQualitySettings();
   const updateSettings = getUpdateSettings();
+  const estMbPerMin = ((quality.bitrate / 8 * 60) / (1024 * 1024)).toFixed(1);
+  const isCustomActive = quality.isCustomFps || quality.resolution === 'custom' || quality.isCustomBitrate;
   const updateInfo = state.updateResult || updateSettings.lastResult;
   const testFeedback = state.connectionTestResult ? `
     <div class="test-feedback ${state.connectionTestResult.success ? 'success' : 'error'}" role="alert">
@@ -700,7 +762,16 @@ function settingsPage() {
 
   const providers = Object.values(EMBEDDED_PROVIDERS);
 
-  return `<section class="workspace settings-workspace"><div class="page-heading"><div><h1>Ayarlar</h1><p>Arayüz temasını belirle, kayıt kalitesi profilini ayarla, bulut sağlayıcısını seç ve güncellemeleri denetle.</p></div></div><div class="settings-layout"><div class="settings-form-column"><section class="quality-card theme-card" aria-label="Arayüz ve Tema Ayarları"><div class="quality-card-head"><div><span class="control-label">GÖRÜNÜM AYARLARI</span><h2>Arayüz Teması</h2></div><span class="theme-active-badge">${state.theme === 'dark' ? `${icon('moon')} KOYU GRAFİT` : `${icon('sun')} AÇIK TEMA`}</span></div><p class="quality-card-desc">Uygulamanın renk temasını seçin. Siyah tema göz yorgunluğunu azaltır ve gece kullanımı için yüksek kontrastlı net yazılar sunar.</p><div class="theme-btn-grid" role="radiogroup" aria-label="Arayüz teması"><button type="button" class="theme-choice-btn ${state.theme === 'dark' ? 'active' : ''}" data-action="set-theme" data-theme-val="dark"><div class="theme-btn-title">${icon('moon')}<strong>Koyu Grafit (Siyah)</strong></div><small>Modern slate siyahı (#0d1117 / #161f2e), parlak ve net yazılar</small></button><button type="button" class="theme-choice-btn ${state.theme === 'light' ? 'active' : ''}" data-action="set-theme" data-theme-val="light"><div class="theme-btn-title">${icon('sun')}<strong>Açık Tema (Klasik)</strong></div><small>Standart açık kağıt tonları (#f3f3ef), gündüz çalışma ortamı</small></button></div></section><section class="quality-card" aria-label="Kayıt kalitesi ve kodlama ayarları"><div class="quality-card-head"><div><span class="control-label">YAKALAMA &amp; KODLAMA PROFİLİ</span><h2>Kayıt Kalitesi ve Dışa Aktarma</h2></div><span class="quality-active-badge">${quality.fps} FPS · ${(quality.bitrate / 1000000).toFixed(0)} MBPS · ${quality.resolution === 'source' ? 'KAYNAK' : quality.resolution.toUpperCase()}</span></div><p class="quality-card-desc">Geri sarma tamponu ve kütüphaneden indirilen/kırpılan klipler bu kare hızı ve veri akış hızıyla kodlanır.</p><div class="quality-grid"><div class="quality-group"><span class="quality-group-label">KARE HIZI (FPS)</span><div class="quality-btn-row" role="radiogroup" aria-label="Kare hızı">${QUALITY_PRESETS.fpsList.map((item) => `<button type="button" class="quality-btn ${quality.fps === item.value ? 'active' : ''}" data-quality-key="fps" data-quality-value="${item.value}"><strong>${item.label}</strong><small>${item.hint}</small></button>`).join('')}</div></div><div class="quality-group"><span class="quality-group-label">ÇÖZÜNÜRLÜK</span><div class="quality-btn-row" role="radiogroup" aria-label="Çözünürlük">${QUALITY_PRESETS.resolutions.map((item) => `<button type="button" class="quality-btn ${quality.resolution === item.id ? 'active' : ''}" data-quality-key="resolution" data-quality-value="${item.id}"><strong>${item.label}</strong><small>${item.hint}</small></button>`).join('')}</div></div><div class="quality-group"><span class="quality-group-label">VİDEO BİTRATE (VERİ HIZI)</span><div class="quality-btn-row" role="radiogroup" aria-label="Bitrate">${QUALITY_PRESETS.bitrates.map((item) => `<button type="button" class="quality-btn ${quality.bitrate === item.value ? 'active' : ''}" data-quality-key="bitrate" data-quality-value="${item.value}"><strong>${item.label}</strong><small>${item.hint}</small></button>`).join('')}</div></div></div></section><section class="quality-card cloud-storage-card" aria-label="Bulut Depolama Sağlayıcıları"><div class="quality-card-head"><div><span class="control-label">BULUT DEPOLAMA MERKEZİ</span><h2>Bulut Depolama Sağlayıcıları</h2></div><span class="cloud-status-badge ${activeProvider.configured ? 'ready' : 'pending'}">${escapeHtml(activeProvider.name)} Seçili</span></div><p class="quality-card-desc">Tüm sağlayıcılar uygulamaya doğrudan gömülüdür. Form doldurmanıza veya karmaşık ayarlar yapmanıza gerek yoktur. İstediğiniz sağlayıcıyı seçip tek tıkla kullanabilirsiniz.</p>${testFeedback}<div class="embedded-provider-list">${providers.map((p) => {
+  return `<section class="workspace settings-workspace"><div class="page-heading"><div><h1>Ayarlar</h1><p>Arayüz temasını belirle, kayıt kalitesi profilini ayarla, bulut sağlayıcısını seç ve güncellemeleri denetle.</p></div></div><div class="settings-layout"><div class="settings-form-column"><section class="quality-card theme-card" aria-label="Arayüz ve Tema Ayarları"><div class="quality-card-head"><div><span class="control-label">GÖRÜNÜM AYARLARI</span><h2>Arayüz Teması</h2></div><span class="theme-active-badge">${state.theme === 'dark' ? `${icon('moon')} KOYU GRAFİT` : `${icon('sun')} AÇIK TEMA`}</span></div><p class="quality-card-desc">Uygulamanın renk temasını seçin. Siyah tema göz yorgunluğunu azaltır ve gece kullanımı için yüksek kontrastlı net yazılar sunar.</p><div class="theme-btn-grid" role="radiogroup" aria-label="Arayüz teması"><button type="button" class="theme-choice-btn ${state.theme === 'dark' ? 'active' : ''}" data-action="set-theme" data-theme-val="dark"><div class="theme-btn-title">${icon('moon')}<strong>Koyu Grafit (Siyah)</strong></div><small>Modern slate siyahı (#0d1117 / #161f2e), parlak ve net yazılar</small></button><button type="button" class="theme-choice-btn ${state.theme === 'light' ? 'active' : ''}" data-action="set-theme" data-theme-val="light"><div class="theme-btn-title">${icon('sun')}<strong>Açık Tema (Klasik)</strong></div><small>Standart açık kağıt tonları (#f3f3ef), gündüz çalışma ortamı</small></button></div></section><section class="quality-card" aria-label="Kayıt kalitesi ve kodlama ayarları"><div class="quality-card-head"><div><span class="control-label">YAKALAMA &amp; KODLAMA PROFİLİ</span><h2>Kayıt Kalitesi ve Dışa Aktarma</h2></div><span class="quality-active-badge">${formatQualityBadge(quality)}</span></div><p class="quality-card-desc">Geri sarma tamponu ve kütüphaneden indirilen/kırpılan klipler bu kare hızı, çözünürlük ve veri akış hızıyla kodlanır. Hazır profillerden birini seçebilir veya aşağıdaki panelden özel değerler belirleyebilirsiniz.</p><div class="quality-grid"><div class="quality-group"><span class="quality-group-label">KARE HIZI (FPS)</span><div class="quality-btn-row" role="radiogroup" aria-label="Kare hızı">${QUALITY_PRESETS.fpsList.map((item) => {
+      const isActive = item.value === 'custom' ? quality.isCustomFps : (!quality.isCustomFps && quality.fps === item.value);
+      return `<button type="button" class="quality-btn ${isActive ? 'active' : ''}" data-quality-key="fps" data-quality-value="${item.value}"><strong>${item.label}</strong><small>${item.hint}</small></button>`;
+    }).join('')}</div></div><div class="quality-group"><span class="quality-group-label">ÇÖZÜNÜRLÜK (GRAFİK KALİTESİ)</span><div class="quality-btn-row" role="radiogroup" aria-label="Çözünürlük">${QUALITY_PRESETS.resolutions.map((item) => {
+      const isActive = quality.resolution === item.id;
+      return `<button type="button" class="quality-btn ${isActive ? 'active' : ''}" data-quality-key="resolution" data-quality-value="${item.id}"><strong>${item.label}</strong><small>${item.hint}</small></button>`;
+    }).join('')}</div></div><div class="quality-group"><span class="quality-group-label">VİDEO BİTRATE (VERİ AKIŞ HIZI)</span><div class="quality-btn-row" role="radiogroup" aria-label="Bitrate">${QUALITY_PRESETS.bitrates.map((item) => {
+      const isActive = item.value === 'custom' ? quality.isCustomBitrate : (!quality.isCustomBitrate && quality.bitrate === item.value);
+      return `<button type="button" class="quality-btn ${isActive ? 'active' : ''}" data-quality-key="bitrate" data-quality-value="${item.value}"><strong>${item.label}</strong><small>${item.hint}</small></button>`;
+    }).join('')}</div></div></div><div class="custom-quality-panel ${isCustomActive ? 'is-active-highlight' : ''}"><div class="custom-panel-head"><div class="custom-head-title"><span class="custom-head-badge">${icon('sparkle')} GELİŞMİŞ ÖZEL AYARLAR</span><h3>Özel Kalite ve Parametre İnce Ayarı</h3></div><div class="custom-est-badge" title="Bu bitrate ile 1 dakikalık kaydın diskte kaplayacağı tahmini alan"><span class="est-label">Tahmini Dosya Boyutu:</span><strong class="est-val">~${estMbPerMin} MB / dk</strong></div></div><p class="custom-panel-desc">Monitörünüzün yenileme hızına veya özel yayın formatınıza göre serbest FPS (15-240), çözünürlük (genişlik × yükseklik) ve veri hızı (Mbps) tanımlayın.</p><div class="custom-controls-grid"><div class="custom-control-box"><div class="custom-control-label"><span>Özel Kare Hızı (FPS)</span><span class="custom-hint-tag">15 - 240 FPS</span></div><div class="custom-input-group"><input type="number" id="custom-fps-input" class="custom-num-input" min="15" max="240" step="1" value="${quality.customFps}" placeholder="144" /><span class="custom-unit">FPS</span></div><div class="quick-chip-row"><span class="chip-label">Hızlı:</span><button type="button" class="quick-chip-btn ${quality.customFps === 75 ? 'chip-active' : ''}" data-custom-chip="fps" data-chip-val="75">75</button><button type="button" class="quick-chip-btn ${quality.customFps === 90 ? 'chip-active' : ''}" data-custom-chip="fps" data-chip-val="90">90</button><button type="button" class="quick-chip-btn ${quality.customFps === 144 ? 'chip-active' : ''}" data-custom-chip="fps" data-chip-val="144">144</button><button type="button" class="quick-chip-btn ${quality.customFps === 165 ? 'chip-active' : ''}" data-custom-chip="fps" data-chip-val="165">165</button><button type="button" class="quick-chip-btn ${quality.customFps === 240 ? 'chip-active' : ''}" data-custom-chip="fps" data-chip-val="240">240</button></div></div><div class="custom-control-box"><div class="custom-control-label"><span>Özel Çözünürlük (G × Y)</span><span class="custom-hint-tag">Piksel (px)</span></div><div class="custom-res-inputs"><div class="custom-input-group"><input type="number" id="custom-width-input" class="custom-num-input" min="320" max="7680" step="2" value="${quality.customWidth}" placeholder="1920" /><span class="custom-unit">G</span></div><span class="res-multiplier">×</span><div class="custom-input-group"><input type="number" id="custom-height-input" class="custom-num-input" min="240" max="4320" step="2" value="${quality.customHeight}" placeholder="1080" /><span class="custom-unit">Y</span></div></div><div class="quick-chip-row"><span class="chip-label">Hızlı:</span><button type="button" class="quick-chip-btn ${quality.customWidth === 2560 && quality.customHeight === 1440 ? 'chip-active' : ''}" data-custom-chip="res" data-chip-w="2560" data-chip-h="1440">2K QHD</button><button type="button" class="quick-chip-btn ${quality.customWidth === 1920 && quality.customHeight === 1080 ? 'chip-active' : ''}" data-custom-chip="res" data-chip-w="1920" data-chip-h="1080">1080p</button><button type="button" class="quick-chip-btn ${quality.customWidth === 1280 && quality.customHeight === 720 ? 'chip-active' : ''}" data-custom-chip="res" data-chip-w="1280" data-chip-h="720">720p</button><button type="button" class="quick-chip-btn ${quality.customWidth === 1080 && quality.customHeight === 1920 ? 'chip-active' : ''}" data-custom-chip="res" data-chip-w="1080" data-chip-h="1920">9:16 Dikey</button><button type="button" class="quick-chip-btn ${quality.customWidth === 1080 && quality.customHeight === 1080 ? 'chip-active' : ''}" data-custom-chip="res" data-chip-w="1080" data-chip-h="1080">1:1 Kare</button></div></div><div class="custom-control-box"><div class="custom-control-label"><span>Özel Bit Hızı (Bitrate)</span><span class="custom-hint-tag">1 - 100 Mbps</span></div><div class="custom-input-group"><input type="number" id="custom-bitrate-input" class="custom-num-input" min="1" max="100" step="1" value="${quality.customBitrateMbps}" placeholder="16" /><span class="custom-unit">Mbps</span></div><div class="quick-chip-row"><span class="chip-label">Hızlı:</span><button type="button" class="quick-chip-btn ${quality.customBitrateMbps === 10 ? 'chip-active' : ''}" data-custom-chip="bitrate" data-chip-val="10">10M</button><button type="button" class="quick-chip-btn ${quality.customBitrateMbps === 16 ? 'chip-active' : ''}" data-custom-chip="bitrate" data-chip-val="16">16M</button><button type="button" class="quick-chip-btn ${quality.customBitrateMbps === 25 ? 'chip-active' : ''}" data-custom-chip="bitrate" data-chip-val="25">25M</button><button type="button" class="quick-chip-btn ${quality.customBitrateMbps === 50 ? 'chip-active' : ''}" data-custom-chip="bitrate" data-chip-val="50">50M</button><button type="button" class="quick-chip-btn ${quality.customBitrateMbps === 75 ? 'chip-active' : ''}" data-custom-chip="bitrate" data-chip-val="75">75M</button></div></div></div><div class="custom-panel-actions"><button type="button" class="apply-custom-quality-btn" data-action="apply-custom-quality">${icon('check')} Özel Kalite Ayarlarını Kaydet ve Uygula</button><button type="button" class="reset-custom-quality-btn" data-action="reset-quality-presets">Varsayılan Profili Geri Yükle (1080p · 60 FPS · 8 Mbps)</button></div></div></section><section class="quality-card cloud-storage-card" aria-label="Bulut Depolama Sağlayıcıları"><div class="quality-card-head"><div><span class="control-label">BULUT DEPOLAMA MERKEZİ</span><h2>Bulut Depolama Sağlayıcıları</h2></div><span class="cloud-status-badge ${activeProvider.configured ? 'ready' : 'pending'}">${escapeHtml(activeProvider.name)} Seçili</span></div><p class="quality-card-desc">Tüm sağlayıcılar uygulamaya doğrudan gömülüdür. Form doldurmanıza veya karmaşık ayarlar yapmanıza gerek yoktur. İstediğiniz sağlayıcıyı seçip tek tıkla kullanabilirsiniz.</p>${testFeedback}<div class="embedded-provider-list">${providers.map((p) => {
     const isSelected = p.id === activeProvider.id;
     return `<div class="embedded-provider-row ${isSelected ? 'active' : ''}"><div class="provider-info-wrap"><div class="provider-title-row"><strong>${escapeHtml(p.name)}</strong><span class="no-card-pill">${escapeHtml(p.badge)}</span>${isSelected ? `<span class="active-pill">${icon('check')} AKTİF</span>` : ''}</div><span class="provider-quota-sub">${escapeHtml(p.quota)} · ${p.configured ? 'Bağlantı Hazır' : 'Anahtar Bekleniyor'}</span></div><div class="provider-row-actions"><button type="button" class="outline-button select-cloud-btn ${isSelected ? 'is-active' : ''}" data-action="select-cloud-provider" data-provider-id="${p.id}">${isSelected ? 'Seçili' : 'Kullan'}</button></div></div>`;
   }).join('')}</div><div class="cloud-footer-actions"><button type="button" class="outline-button test-active-cloud-btn" data-action="test-active-cloud" ${state.testingConnection || !activeProvider.configured ? 'disabled' : ''}>${state.testingConnection ? `${icon('settings')} Test Ediliyor…` : `${icon('bolt')} ${escapeHtml(activeProvider.name)} Bağlantısını Test Et`}</button></div></section><section class="quality-card update-card" aria-label="Sürüm ve güncelleme denetleme"><div class="quality-card-head"><div><span class="control-label">YAZILIM GÜNCELLEMELERİ</span><h2>Sürüm ve Güncelleme Denetleyici</h2></div><div class="version-head-badge"><span class="version-badge">v${APP_VERSION}</span>${statusBadgeHtml}</div></div><p class="quality-card-desc">Velex Clip, resmi GitHub deponuzdaki (<strong>${escapeHtml(updateSettings.githubRepo || OFFICIAL_GITHUB_REPO)}</strong>) yeni yayınları ve kurulum dosyalarını otomatik denetler.</p>${updateBannerHtml}<div class="update-settings-form"><div class="embedded-repo-box"><div class="embedded-repo-info"><span class="control-label">GÖMÜLÜ RESMİ DAĞITIM KANALI</span><div class="repo-name-row"><span class="repo-icon">${icon('bolt')}</span><strong>github.com/${escapeHtml(updateSettings.githubRepo || OFFICIAL_GITHUB_REPO)}</strong><span class="embedded-pill">Otomatik Bağlı</span></div></div><button type="button" class="outline-button check-update-btn" data-action="check-updates" ${isUpdating || state.checkingUpdate ? 'disabled' : ''}>${isUpdating || state.checkingUpdate ? 'Denetleniyor…' : `${icon('arrow')} Şimdi Güncellemeleri Denetle`}</button></div><div class="update-actions-bar"><span class="last-checked-label">${updateSettings.lastCheckedAt ? `Son denetleme: ${formatDate(updateSettings.lastCheckedAt)}` : 'Açılışta otomatik denetlenir'}</span><button type="button" class="text-link-button" data-action="open-download" data-url="https://github.com/${escapeAttribute(updateSettings.githubRepo || OFFICIAL_GITHUB_REPO)}/releases">GitHub Releases Sayfasını Aç ${icon('arrow')}</button></div></div></section></div></div></section>`;
@@ -867,15 +938,92 @@ function bindEvents() {
   }));
   app.querySelectorAll('[data-quality-key]').forEach((button) => button.addEventListener('click', () => {
     const key = button.dataset.qualityKey;
-    let value = button.dataset.qualityValue;
-    if (key === 'fps' || key === 'bitrate') value = Number(value);
+    const value = button.dataset.qualityValue;
     const current = getQualitySettings();
-    current[key] = value;
-    saveQualitySettings(current);
-    const label = button.querySelector('strong')?.textContent || value;
-    showToast(`Kalite ayarı güncellendi: ${label}`);
+
+    if (key === 'fps') {
+      if (value === 'custom') {
+        current.isCustomFps = true;
+        current.fps = current.customFps;
+        saveQualitySettings(current);
+        showToast(`Özel FPS seçildi (${current.fps} FPS)`);
+      } else {
+        current.isCustomFps = false;
+        current.fps = Number(value);
+        saveQualitySettings(current);
+        showToast(`Kare hızı ayarlandı: ${current.fps} FPS`);
+      }
+    } else if (key === 'resolution') {
+      if (value === 'custom') {
+        current.resolution = 'custom';
+        saveQualitySettings(current);
+        showToast(`Özel çözünürlük seçildi (${current.customWidth}×${current.customHeight})`);
+      } else {
+        current.resolution = value;
+        saveQualitySettings(current);
+        const label = button.querySelector('strong')?.textContent || value;
+        showToast(`Çözünürlük ayarlandı: ${label}`);
+      }
+    } else if (key === 'bitrate') {
+      if (value === 'custom') {
+        current.isCustomBitrate = true;
+        current.bitrate = current.customBitrateMbps * 1000000;
+        saveQualitySettings(current);
+        showToast(`Özel bitrate seçildi (${current.customBitrateMbps} Mbps)`);
+      } else {
+        current.isCustomBitrate = false;
+        current.bitrate = Number(value);
+        saveQualitySettings(current);
+        const label = button.querySelector('strong')?.textContent || `${Number(value) / 1000000} Mbps`;
+        showToast(`Bit hızı ayarlandı: ${label}`);
+      }
+    }
     render();
   }));
+
+  app.querySelectorAll('[data-custom-chip]').forEach((button) => button.addEventListener('click', () => {
+    const chipType = button.dataset.customChip;
+    const current = getQualitySettings();
+
+    if (chipType === 'fps') {
+      const val = Math.max(15, Math.min(240, Number(button.dataset.chipVal) || 144));
+      current.customFps = val;
+      current.fps = val;
+      current.isCustomFps = true;
+      saveQualitySettings(current);
+      showToast(`Özel FPS ayarlandı: ${val} FPS`);
+      render();
+    } else if (chipType === 'res') {
+      const w = Math.max(320, Math.min(7680, Number(button.dataset.chipW) || 1920));
+      const h = Math.max(240, Math.min(4320, Number(button.dataset.chipH) || 1080));
+      current.customWidth = w;
+      current.customHeight = h;
+      current.resolution = 'custom';
+      saveQualitySettings(current);
+      showToast(`Özel çözünürlük ayarlandı: ${w}×${h}`);
+      render();
+    } else if (chipType === 'bitrate') {
+      const val = Math.max(1, Math.min(100, Number(button.dataset.chipVal) || 16));
+      current.customBitrateMbps = val;
+      current.bitrate = val * 1000000;
+      current.isCustomBitrate = true;
+      saveQualitySettings(current);
+      showToast(`Özel bitrate ayarlandı: ${val} Mbps`);
+      render();
+    }
+  }));
+
+  const liveBitrateInput = app.querySelector('#custom-bitrate-input');
+  if (liveBitrateInput) {
+    liveBitrateInput.addEventListener('input', () => {
+      const val = Number(liveBitrateInput.value);
+      const estEl = app.querySelector('.custom-est-badge .est-val');
+      if (estEl && val > 0) {
+        const estMb = ((val * 1000000 / 8 * 60) / (1024 * 1024)).toFixed(1);
+        estEl.textContent = `~${estMb} MB / dk`;
+      }
+    });
+  }
   app.querySelectorAll('[data-action]').forEach((button) => button.addEventListener('click', (event) => {
     if (button.classList.contains('dialog-backdrop') && event.target !== button) return;
     handleAction(button);
@@ -1163,6 +1311,50 @@ async function handleAction(button) {
         showToast(targetTheme === 'dark' ? 'Koyu Grafit (Siyah) tema aktif edildi.' : 'Açık tema aktif edildi.');
       }
     }
+    if (action === 'apply-custom-quality') {
+      const fpsInput = app.querySelector('#custom-fps-input');
+      const widthInput = app.querySelector('#custom-width-input');
+      const heightInput = app.querySelector('#custom-height-input');
+      const bitrateInput = app.querySelector('#custom-bitrate-input');
+
+      const current = getQualitySettings();
+      const fps = Math.max(15, Math.min(240, Math.round(Number(fpsInput?.value) || current.customFps || 60)));
+      const w = Math.max(320, Math.min(7680, Math.round(Number(widthInput?.value) || current.customWidth || 1920)));
+      const h = Math.max(240, Math.min(4320, Math.round(Number(heightInput?.value) || current.customHeight || 1080)));
+      const mbps = Math.max(1, Math.min(100, Math.round(Number(bitrateInput?.value) || current.customBitrateMbps || 16)));
+
+      current.customFps = fps;
+      current.fps = fps;
+      current.isCustomFps = true;
+
+      current.customWidth = w;
+      current.customHeight = h;
+      current.resolution = 'custom';
+
+      current.customBitrateMbps = mbps;
+      current.bitrate = mbps * 1000000;
+      current.isCustomBitrate = true;
+
+      saveQualitySettings(current);
+      showToast(`Özel kalite ayarları kaydedildi ve uygulandı (${fps} FPS · ${mbps} Mbps · ${w}×${h})`, 'success');
+      render();
+    }
+    if (action === 'reset-quality-presets') {
+      const defaultSettings = {
+        resolution: '1080p',
+        fps: 60,
+        bitrate: 8000000,
+        isCustomFps: false,
+        customFps: 144,
+        customWidth: 1920,
+        customHeight: 1080,
+        isCustomBitrate: false,
+        customBitrateMbps: 16,
+      };
+      saveQualitySettings(defaultSettings);
+      showToast('Standart kalite profili geri yüklendi (1080p · 60 FPS · 8 Mbps)', 'info');
+      render();
+    }
   } catch (error) {
     showToast(error instanceof Error ? error.message : 'İşlem tamamlanamadı.', 'error');
   }
@@ -1199,12 +1391,20 @@ async function startCapture(sourceId) {
   const videoConstraints = {
     frameRate: { ideal: quality.fps, max: quality.fps },
   };
-  if (quality.resolution === '1080p') {
+  if (quality.resolution === '1440p') {
+    videoConstraints.width = { ideal: 2560, max: 2560 };
+    videoConstraints.height = { ideal: 1440, max: 1440 };
+  } else if (quality.resolution === '1080p') {
     videoConstraints.width = { ideal: 1920, max: 1920 };
     videoConstraints.height = { ideal: 1080, max: 1080 };
   } else if (quality.resolution === '720p') {
     videoConstraints.width = { ideal: 1280, max: 1280 };
     videoConstraints.height = { ideal: 720, max: 720 };
+  } else if (quality.resolution === 'custom') {
+    const w = Math.max(320, Math.min(7680, Number(quality.customWidth) || 1920));
+    const h = Math.max(240, Math.min(4320, Number(quality.customHeight) || 1080));
+    videoConstraints.width = { ideal: w, max: w };
+    videoConstraints.height = { ideal: h, max: h };
   }
 
   let stream;

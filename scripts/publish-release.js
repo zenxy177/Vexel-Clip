@@ -20,12 +20,13 @@ if (!TOKEN) {
 const OWNER = 'zenxy177';
 const REPO = 'Vexel-Clip';
 const TAG = `v${pkg.version}`;
-const NAME = `Velex Clip v${pkg.version} - Yeni Logo, Özel İkonlar & Animasyonlu Güncelleyici`;
+const NAME = `Velex Clip v${pkg.version} - Özel Kayıt Kalitesi (Custom FPS, Çözünürlük & Bitrate)`;
 const BODY = `### Velex Clip v${pkg.version} Sürüm Notları
-- 💎 **Yeni Özel Velex Clip Logosu**: Siber estetik, neon mavi/indigo kanatlar ve dinamik kayıt vizörü içeren yepyeni kurumsal uygulama logosu.
-- 🎨 **Özel Vektör İkon Seti**: Tüm hazır/global işletim sistemi emojileri kaldırılarak Velex Clip'e özel stilize edilmiş vektör SVG ikon setine dönüştürüldü.
-- ⚡ **Animasyonlu Yeşil Güncelleme Düğmeleri**: "Güncellemeyi İndir" ve "Yeniden Başlat ve Yükle" butonları yeşil neon nabız efektiyle yanıp sönecek şekilde güncellendi.
-- 🚀 **Hareketli Canlı Eylemler**: Roket ve indirme ikonları hareketli ve dinamik itici alev efektleriyle canlı hale getirildi.`;
+- 🎛️ **Özel (Custom) Kayıt Kalitesi & İnce Ayar Paneli**: Kullanıcılar artık sabit ayarlara bağlı kalmadan diledikleri FPS (15-240 FPS), serbest çözünürlük (genişlik × yükseklik px) ve veri hızını (1-100 Mbps) özgürce belirleyebilir.
+- ⚡ **1 Tıkla Hazır Kalite Profilleri**: Mevcut 120 FPS, 60 FPS, 30 FPS, Kaynak, 1440p (2K), 1080p, 720p ve 20/12/8/5/2.5 Mbps hazır seçenekler korunarak anında geçiş imkanı sağlandı.
+- 🎯 **Hızlı Seçim Çipleri**: 75/90/144/165/240 FPS, 2K/1080p/720p/9:16 Dikey/1:1 Kare ve 10M/16M/25M/50M/75M hızlı çipleriyle tek tıkla yapılandırma.
+- 📊 **Canlı Boyut Tahmini**: Girilen bitrate değerine göre dakika başına tahmini dosya boyutu (~MB/dk) anlık hesaplanıp gösterilir.
+- 🔄 **Doğrudan Donanım & Encoder Entegrasyonu**: Özel çözünürlük ve kare hızı doğrudan MediaDevices ve MediaRecorder video akışına aktarılır.`;
 
 async function publish() {
   const headers = {
