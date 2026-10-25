@@ -20,13 +20,13 @@ if (!TOKEN) {
 const OWNER = 'zenxy177';
 const REPO = 'Vexel-Clip';
 const TAG = `v${pkg.version}`;
-const NAME = `Velex Clip v${pkg.version} - Koyu Grafit Siyah Tema & Yüksek Kontrast Desteği`;
+const NAME = `Velex Clip v${pkg.version} - Filebase Entegrasyonu (Kartsız Bulut) & Temiz Arayüz`;
 const BODY = `### Velex Clip v${pkg.version} Sürüm Notları
-- 🖤 **Koyu Grafit (Siyah) Tema**: Göz yormayan, Discord/Slate tarzı modern derin siyah arayüz (#0d1117 / #161f2e).
-- 👁️ **Yüksek Kontrast & Net Okunabilirlik**: Başlıklar, butonlar, giriş alanları, etiketler ve zaman çizelgesindeki tüm metinler siyah zemin üzerinde kristal netliğe kavuşturuldu.
-- 🌓 **Tema Geçiş Düğmesi**: Üst bar ve Ayarlar sayfasından Koyu (Siyah) ve Açık temalar arasında tek tıkla anında geçiş yapabilme.
-- 🔄 **Uygulama İçi Canlı Güncelleyici**: Sürüm kontrolü, anlık indirme yüzdesi ve tek tıkla yükleme sistemi aktif.
-- ⚡ **Gömülü Cloudflare R2 Bulut Aktarımı**: 10 GB kalıcı depolama ve sınırsız 0$ izleme/indirme trafiği.`;
+- ☁️ **Gömülü Filebase Bulut Depolama**: Kredi kartı gerektirmeyen Filebase S3 entegrasyonu (velex-stroge) doğrudan sisteme gömüldü.
+- 🧹 **Sade ve Temiz Arayüz**: Tüm karmaşık formlar, CORS/SQL kod kutuları ve kılavuz panelleri kaldırılarak doğrudan tek tıkla çalışan sağlayıcı seçicisi eklendi.
+- 🔄 **Tek Tıkla Bulut Değiştirme**: Bulut sekmesinden ve Ayarlar'dan sunucular arasında anında geçiş yapabilme ve canlı bağlantı testi.
+- 🖤 **Koyu Grafit Siyah Tema**: Yüksek kontrastlı, net okunabilir siyah arayüz korundu.
+- 🚀 **Otomatik Güncelleme**: Uygulama içi güncelleme desteği.`;
 
 async function publish() {
   const headers = {

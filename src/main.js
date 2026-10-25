@@ -69,8 +69,7 @@ const state = {
   trimUrl: null,
   testingConnection: false,
   connectionTestResult: null,
-  draftSettings: null,
-  activeCloudProvider: 's3',
+  activeCloudId: localStorage.getItem('velex-clip-active-cloud') || 'filebase',
   checkingUpdate: false,
   updateResult: null,
   updater: {
@@ -83,10 +82,87 @@ const state = {
   },
 };
 
+const EMBEDDED_PROVIDERS = {
+  filebase: {
+    id: 'filebase',
+    name: 'Filebase',
+    badge: '5 GB Kalıcı · Kartsız',
+    type: 's3',
+    quota: '5 GB Kalıcı · Kredi Kartı İstemez',
+    configured: true,
+    config: {
+      provider: 's3',
+      s3Endpoint: 'https://s3.filebase.io',
+      s3Bucket: 'velex-stroge',
+      s3Region: 'us-east-1',
+      s3AccessKeyId: 'B521137EF187A1143F3B',
+      s3SecretAccessKey: 'ykjCBAaVgPgnT5V6FHZFalB75Ytitgw7mGgW9IKT',
+      s3PublicUrl: '',
+    },
+  },
+  r2: {
+    id: 'r2',
+    name: 'Cloudflare R2',
+    badge: '10 GB Free',
+    type: 's3',
+    quota: '10 GB Kalıcı · $0 Egress',
+    configured: true,
+    config: {
+      provider: 's3',
+      s3Endpoint: 'https://77b8ab0686cc8803aaae1a80ffa492a3.eu.r2.cloudflarestorage.com',
+      s3Bucket: 'velex-clips',
+      s3Region: 'auto',
+      s3AccessKeyId: 'c8fbfbbc7f7227809dcae2c8a0dc730a',
+      s3SecretAccessKey: '7947401cfb0eaa98d2fa9bc13159db282102b2cc039d4ff5609790dd8107268f',
+      s3PublicUrl: '',
+    },
+  },
+  b2: {
+    id: 'b2',
+    name: 'Backblaze B2',
+    badge: 'Kredi Kartı İstemez',
+    type: 's3',
+    quota: '10 GB Kalıcı · S3 Uyumlu',
+    configured: false,
+    config: {
+      provider: 's3',
+      s3Endpoint: '',
+      s3Bucket: '',
+      s3Region: 'us-west-004',
+      s3AccessKeyId: '',
+      s3SecretAccessKey: '',
+      s3PublicUrl: '',
+    },
+  },
+  supabase: {
+    id: 'supabase',
+    name: 'Supabase Storage',
+    badge: 'Kredi Kartı İstemez',
+    type: 'supabase',
+    quota: '1 GB Kalıcı · REST API',
+    configured: false,
+    config: {
+      provider: 'supabase',
+      url: '',
+      apiKey: '',
+      bucket: '',
+      accessToken: '',
+    },
+  },
+};
+
+function getActiveCloudProvider() {
+  return EMBEDDED_PROVIDERS[state.activeCloudId] || EMBEDDED_PROVIDERS.filebase;
+}
+
+function cloudConfig() {
+  return getActiveCloudProvider().config;
+}
+
 // Initial theme apply
 applyTheme(state.theme);
 
-let APP_VERSION = '0.1.3';
+let APP_VERSION = '0.1.4';
 const OFFICIAL_GITHUB_REPO = 'zenxy177/Vexel-Clip';
 const UPDATE_SETTINGS_KEY = 'velex-clip-update-settings';
 
@@ -547,31 +623,30 @@ function clipRow(clip) {
 }
 
 function cloudPage() {
-  const config = cloudConfig();
-  const isS3 = config.provider === 's3';
-  const configured = isS3
-    ? Boolean(config.s3Endpoint && config.s3Bucket && config.s3AccessKeyId && config.s3SecretAccessKey)
-    : Boolean(config.url && config.apiKey && config.bucket);
+  const activeProvider = getActiveCloudProvider();
+  const isConfigured = activeProvider.configured;
+  const testFeedback = state.connectionTestResult ? `
+    <div class="test-feedback ${state.connectionTestResult.success ? 'success' : 'error'}" role="alert">
+      <div class="feedback-title">${state.connectionTestResult.success ? '✓ BAĞLANTI BAŞARILI' : '⚠ BAĞLANTI BAŞARISIZ'}</div>
+      <p>${escapeHtml(state.connectionTestResult.message)}</p>
+      ${state.connectionTestResult.hint ? `<div class="feedback-hint">${escapeHtml(state.connectionTestResult.hint)}</div>` : ''}
+    </div>
+  ` : '';
 
-  let providerLabel = 'Supabase Storage';
-  if (isS3) {
-    if (config.s3Endpoint.includes('r2.cloudflarestorage.com')) providerLabel = 'Cloudflare R2 (10 GB Free)';
-    else if (config.s3Endpoint.includes('backblazeb2.com')) providerLabel = 'Backblaze B2 (10 GB Free)';
-    else if (config.s3Endpoint.includes('localhost') || config.s3Endpoint.includes('127.0.0.1')) providerLabel = 'Yerel MinIO (S3)';
-    else providerLabel = 'S3 Uyumlu Depolama';
-  }
-
-  return `<section class="workspace cloud-workspace"><div class="page-heading"><div><h1>Bulut aktarımı</h1><p>Dosyaların önce bu cihazda kalır. Aktarım, sen başlattığında yapılır.</p></div><div class="cloud-header-status"><span class="provider-pill-badge">${providerLabel}</span><span class="cloud-state ${configured ? 'configured' : ''}"><i></i>${configured ? 'BAĞLANTI HAZIR' : 'BAĞLANTI GEREKLİ'}</span></div></div><div class="cloud-layout"><section class="cloud-explainer"><span class="cloud-emblem">${icon('cloud')}</span><h2>Kendi depolama hesabını bağla.</h2><p>${isS3 ? 'S3-Uyumlu (Cloudflare R2, Backblaze B2, MinIO veya AWS S3) depolama alanınız bağlandı. Klipler doğrudan bu uç noktaya güvenli AWS Signature v4 ile aktarılır.' : 'İlk sürüm Supabase Storage ile çalışır. Ücretsiz planın güncel depolama, bant genişliği ve boşta kalma sınırları Supabase\'e göre değişebilir.'}</p><div class="cloud-actions-group"><button class="outline-button" data-page="settings">Bağlantıyı yapılandır ${icon('arrow')}</button>${configured ? `<button class="outline-button" data-action="test-connection-from-cloud" ${state.testingConnection ? 'disabled' : ''}>${state.testingConnection ? 'Test ediliyor…' : 'Bağlantıyı test et'}</button>` : ''}</div><div class="cloud-privacy"><span>${icon('check')}</span><p>Kimlik bilgilerin bu sekmenin oturumunda saklanır. Klibi silmedikçe yerel kopya korunur.</p></div><div class="cloud-quota-note"><span class="control-label">SAĞLAYICI KOTA BİLGİSİ</span><p>${isS3 ? 'Cloudflare R2 ücretsiz planında 10 GB depolama ve sıfır ($0) egress ücreti bulunur. Tekil dosya boyutu sınırı 5 TB\'tır.' : 'Supabase ücretsiz planında tekil dosya boyutu sınırı varsayılan 50 MB, toplam depolama 1 GB\'tır. Klipler her zaman yerel kitaplığınızda korunur.'}</p></div></section><section class="cloud-queue"><div class="queue-heading"><span class="control-label">AKTARILMAYA HAZIR</span><span>${state.clips.length} KLİP</span></div>${state.clips.length ? state.clips.map((clip) => `<div class="queue-row"><div class="queue-info"><strong>${escapeHtml(clip.name)}</strong><div class="queue-meta"><span>${Math.round(clip.blob.size / 1024 / 1024 * 10) / 10} MB · ${formatDate(clip.createdAt)}</span>${clip.uploadedAt ? `<span class="queue-status-badge uploaded"><i></i> Aktarıldı (${formatDate(clip.uploadedAt)})</span>` : '<span class="queue-status-badge"><i></i> Cihazda bekliyor</span>'}</div></div><button class="outline-button upload-action ${clip.uploadedAt ? 'uploaded' : ''}" data-action="upload" data-id="${clip.id}" ${configured ? '' : 'disabled'}>${icon('upload')} ${clip.uploadedAt ? 'Tekrar aktar' : 'Aktar'}</button></div>`).join('') : '<div class="queue-empty">Aktarım kuyruğu boş. Yeni klipler burada görünür.</div>'}</section></div></section>`;
+  return `<section class="workspace cloud-workspace"><div class="page-heading"><div><h1>Bulut Aktarımı</h1><p>Klipleriniz önce bu cihazda saklanır. Seçtiğiniz bulut sağlayıcısına tek tıkla doğrudan aktarabilirsiniz.</p></div><div class="cloud-header-status"><span class="provider-pill-badge">${escapeHtml(activeProvider.name)}</span><span class="cloud-state ${isConfigured ? 'configured' : ''}"><i></i>${isConfigured ? 'BAĞLANTI HAZIR' : 'ANAHTAR BEKLENİYOR'}</span></div></div><div class="cloud-provider-bar"><div class="cloud-bar-left"><span class="control-label">AKTİF BULUT:</span><div class="cloud-pill-selector" role="radiogroup" aria-label="Aktif Bulut Sağlayıcısı">${Object.values(EMBEDDED_PROVIDERS).map((p) => `<button type="button" class="cloud-pill-btn ${p.id === activeProvider.id ? 'active' : ''} ${p.configured ? '' : 'pending'}" data-action="select-cloud-provider" data-provider-id="${p.id}"><span>${escapeHtml(p.name)}</span><small>${p.configured ? '✓ Hazır' : '⏳ Bekliyor'}</small></button>`).join('')}</div></div><div class="cloud-bar-actions"><button type="button" class="outline-button test-active-cloud-btn" data-action="test-active-cloud" ${state.testingConnection || !isConfigured ? 'disabled' : ''}>${state.testingConnection ? 'Test Ediliyor…' : '⚡ Bağlantıyı Test Et'}</button><button type="button" class="outline-button" data-page="settings">${icon('settings')} Ayarlar</button></div></div>${testFeedback}<section class="cloud-queue full-width-queue"><div class="queue-heading"><span class="control-label">AKTARILMAYA HAZIR KLİPLER</span><span>${state.clips.length} KLİP</span></div>${state.clips.length ? state.clips.map((clip) => `<div class="queue-row"><div class="queue-info"><strong>${escapeHtml(clip.name)}</strong><div class="queue-meta"><span>${Math.round(clip.blob.size / 1024 / 1024 * 10) / 10} MB · ${formatDate(clip.createdAt)}</span>${clip.uploadedAt ? `<span class="queue-status-badge uploaded"><i></i> Aktarıldı (${formatDate(clip.uploadedAt)})</span>` : '<span class="queue-status-badge"><i></i> Cihazda bekliyor</span>'}</div></div><button class="outline-button upload-action ${clip.uploadedAt ? 'uploaded' : ''}" data-action="upload" data-id="${clip.id}" ${isConfigured ? '' : 'disabled'}>${icon('upload')} ${clip.uploadedAt ? 'Tekrar Aktar' : 'Buluta Aktar'}</button></div>`).join('') : '<div class="queue-empty">Aktarım kuyruğu boş. Yakaladığınız yeni klipler burada listelenir.</div>'}</section></section>`;
 }
 
 function settingsPage() {
-  const config = state.draftSettings || cloudConfig();
+  const activeProvider = getActiveCloudProvider();
   const quality = getQualitySettings();
   const updateSettings = getUpdateSettings();
   const updateInfo = state.updateResult || updateSettings.lastResult;
-  const activeProvider = state.activeCloudProvider || config.provider || 'supabase';
-  const isS3 = activeProvider === 's3';
-  const testFeedback = state.connectionTestResult ? `<div class="test-feedback ${state.connectionTestResult.success ? 'success' : 'error'}" role="alert"><div class="feedback-title">${state.connectionTestResult.success ? '✓ BAĞLANTI BAŞARILI' : '⚠ BAĞLANTI BAŞARISIZ'}</div><p>${escapeHtml(state.connectionTestResult.message)}</p>${state.connectionTestResult.hint ? `<div class="feedback-hint">${escapeHtml(state.connectionTestResult.hint)}</div>` : ''}</div>` : '';
+  const testFeedback = state.connectionTestResult ? `
+    <div class="test-feedback ${state.connectionTestResult.success ? 'success' : 'error'}" role="alert">
+      <div class="feedback-title">${state.connectionTestResult.success ? '✓ BAĞLANTI BAŞARILI' : '⚠ BAĞLANTI BAŞARISIZ'}</div>
+      <p>${escapeHtml(state.connectionTestResult.message)}</p>
+      ${state.connectionTestResult.hint ? `<div class="feedback-hint">${escapeHtml(state.connectionTestResult.hint)}</div>` : ''}
+    </div>` : '';
 
   const u = state.updater;
   const isUpdating = u.status === 'checking' || u.status === 'downloading';
@@ -617,17 +692,12 @@ function settingsPage() {
     }
   }
 
-  return `<section class="workspace settings-workspace"><div class="page-heading"><div><h1>Ayarlar</h1><p>Arayüz temasını belirle, kayıt kalitesi profilini ayarla, bulut sağlayıcısını yapılandır ve güncellemeleri denetle.</p></div></div><div class="settings-layout"><div class="settings-form-column"><section class="quality-card theme-card" aria-label="Arayüz ve Tema Ayarları"><div class="quality-card-head"><div><span class="control-label">GÖRÜNÜM AYARLARI</span><h2>Arayüz Teması</h2></div><span class="theme-active-badge">${state.theme === 'dark' ? '🌙 KOYU GRAFİT (SİYAH)' : '☀️ AÇIK TEMA'}</span></div><p class="quality-card-desc">Uygulamanın renk temasını seçin. Siyah tema göz yorgunluğunu azaltır ve gece kullanımı için yüksek kontrastlı net yazılar sunar.</p><div class="theme-btn-grid" role="radiogroup" aria-label="Arayüz teması"><button type="button" class="theme-choice-btn ${state.theme === 'dark' ? 'active' : ''}" data-action="set-theme" data-theme-val="dark"><div class="theme-btn-title">${icon('moon')}<strong>Koyu Grafit (Siyah)</strong></div><small>Modern slate siyahı (#0d1117 / #161f2e), parlak ve net yazılar</small></button><button type="button" class="theme-choice-btn ${state.theme === 'light' ? 'active' : ''}" data-action="set-theme" data-theme-val="light"><div class="theme-btn-title">${icon('sun')}<strong>Açık Tema (Klasik)</strong></div><small>Standart açık kağıt tonları (#f3f3ef), gündüz çalışma ortamı</small></button></div></section><section class="quality-card" aria-label="Kayıt kalitesi ve kodlama ayarları"><div class="quality-card-head"><div><span class="control-label">YAKALAMA &amp; KODLAMA PROFİLİ</span><h2>Kayıt kalitesi ve dışa aktarma</h2></div><span class="quality-active-badge">${quality.fps} FPS · ${(quality.bitrate / 1000000).toFixed(0)} MBPS · ${quality.resolution === 'source' ? 'KAYNAK' : quality.resolution.toUpperCase()}</span></div><p class="quality-card-desc">Geri sarma tamponu ve kütüphaneden indirilen/kırpılan klipler bu kare hızı ve veri akış hızıyla kodlanır.</p><div class="quality-grid"><div class="quality-group"><span class="quality-group-label">KARE HIZI (FPS)</span><div class="quality-btn-row" role="radiogroup" aria-label="Kare hızı">${QUALITY_PRESETS.fpsList.map((item) => `<button type="button" class="quality-btn ${quality.fps === item.value ? 'active' : ''}" data-quality-key="fps" data-quality-value="${item.value}"><strong>${item.label}</strong><small>${item.hint}</small></button>`).join('')}</div></div><div class="quality-group"><span class="quality-group-label">ÇÖZÜNÜRLÜK</span><div class="quality-btn-row" role="radiogroup" aria-label="Çözünürlük">${QUALITY_PRESETS.resolutions.map((item) => `<button type="button" class="quality-btn ${quality.resolution === item.id ? 'active' : ''}" data-quality-key="resolution" data-quality-value="${item.id}"><strong>${item.label}</strong><small>${item.hint}</small></button>`).join('')}</div></div><div class="quality-group"><span class="quality-group-label">VİDEO BİTRATE (VERİ HIZI)</span><div class="quality-btn-row" role="radiogroup" aria-label="Bitrate">${QUALITY_PRESETS.bitrates.map((item) => `<button type="button" class="quality-btn ${quality.bitrate === item.value ? 'active' : ''}" data-quality-key="bitrate" data-quality-value="${item.value}"><strong>${item.label}</strong><small>${item.hint}</small></button>`).join('')}</div></div></div></section><section class="cloud-provider-section"><div class="card-head"><span class="control-label">BULUT DEPOLAMA SAĞLAYICISI</span><h2 class="settings-section-title">Bulut Aktarım Bağlantısı</h2></div><div class="provider-switch-tabs" role="tablist"><button type="button" class="provider-tab ${!isS3 ? 'active' : ''}" data-provider-tab="supabase"><strong>Supabase Storage</strong><small>1 GB Free · REST API</small></button><button type="button" class="provider-tab ${isS3 ? 'active' : ''}" data-provider-tab="s3"><strong>S3 Uyumlu Depolama</strong><small>Cloudflare R2 / B2 / MinIO · 10 GB Free</small></button></div>${testFeedback}${isS3 ? `<div class="s3-preset-bar"><span class="control-label">HIZLI ŞABLON:</span><button type="button" class="preset-pill" data-s3-preset="r2">⚡ Cloudflare R2 (10 GB Free + 0$ Egress)</button><button type="button" class="preset-pill" data-s3-preset="b2">⚡ Backblaze B2 (10 GB Free)</button><button type="button" class="preset-pill" data-s3-preset="minio">⚡ MinIO (Yerel S3)</button></div><form id="cloud-settings" class="settings-form s3-form"><input type="hidden" name="provider" value="s3"><label><span>S3 Uç Noktası (Endpoint URL)</span><input id="s3-endpoint-input" name="s3Endpoint" type="url" placeholder="https://<hesap-id>.r2.cloudflarestorage.com" value="${escapeAttribute(config.s3Endpoint)}" required></label><div class="form-row-2"><label><span>Bucket Adı</span><input id="s3-bucket-input" name="s3Bucket" type="text" placeholder="clips" value="${escapeAttribute(config.s3Bucket)}" required></label><label><span>Bölge (Region)</span><input id="s3-region-input" name="s3Region" type="text" placeholder="auto (veya us-east-1)" value="${escapeAttribute(config.s3Region || 'auto')}" required></label></div><label><span>Access Key ID</span><input name="s3AccessKeyId" type="text" autocomplete="off" placeholder="R2 / B2 / S3 Access Key ID" value="${escapeAttribute(config.s3AccessKeyId)}" required></label><label><span>Secret Access Key</span><input name="s3SecretAccessKey" type="password" autocomplete="off" placeholder="Secret Access Key" value="${escapeAttribute(config.s3SecretAccessKey)}" required></label><label><span>Public URL / CDN Adresi <small>(isteğe bağlı)</small></span><input name="s3PublicUrl" type="url" placeholder="https://pub-xxxx.r2.dev veya özel alan adınız" value="${escapeAttribute(config.s3PublicUrl)}"></label><p class="form-help">S3 uyumlu depolama motoru doğrudan istemci üzerinden AWS Signature v4 (SigV4) standardıyla kimlik doğrular. Klipler doğrudan kendi Cloudflare R2, Backblaze B2 veya yerel MinIO alanınıza aktarılır.</p><div class="settings-actions"><button class="save-button" type="submit">Ayarları kaydet ${icon('arrow')}</button><button class="outline-button" type="button" data-action="test-connection" ${state.testingConnection ? 'disabled' : ''}>${state.testingConnection ? 'Test ediliyor…' : 'Bağlantıyı test et'}</button><button class="text-button" type="button" data-action="clear-settings">Bilgileri temizle</button></div></form>` : `<form id="cloud-settings" class="settings-form supabase-form"><input type="hidden" name="provider" value="supabase"><label><span>Project URL</span><input name="url" type="url" placeholder="https://proje-id.supabase.co" value="${escapeAttribute(config.url)}" required></label><label><span>Anon / publishable key</span><input name="apiKey" type="password" autocomplete="off" placeholder="sb_publishable_..." value="${escapeAttribute(config.apiKey)}" required></label><label><span>Bucket adı</span><input name="bucket" type="text" placeholder="clips" value="${escapeAttribute(config.bucket)}" required></label><label><span>Oturum erişim belirteci <small>(isteğe bağlı)</small></span><input name="accessToken" type="password" autocomplete="off" placeholder="Supabase kullanıcı JWT" value="${escapeAttribute(config.accessToken)}"></label><p class="form-help">Supabase Storage'da bucket oluştur ve yüklemeye izin veren erişim kurallarını yapılandır. Bilgiler yalnızca bu sekmenin oturumunda tutulur; doğrudan Supabase URL'nize gönderilir.</p><div class="settings-actions"><button class="save-button" type="submit">Ayarları kaydet ${icon('arrow')}</button><button class="outline-button" type="button" data-action="test-connection" ${state.testingConnection ? 'disabled' : ''}>${state.testingConnection ? 'Test ediliyor…' : 'Bağlantıyı test et'}</button><button class="text-button" type="button" data-action="clear-settings">Bilgileri temizle</button></div></form>`}</section><section class="quality-card update-card" aria-label="Sürüm ve güncelleme denetleme"><div class="quality-card-head"><div><span class="control-label">YAZILIM GÜNCELLEMELERİ</span><h2>Sürüm ve Güncelleme Denetleyici</h2></div><div class="version-head-badge"><span class="version-badge">v${APP_VERSION}</span>${statusBadgeHtml}</div></div><p class="quality-card-desc">Velex Clip, resmi GitHub deponuzdaki (<strong>${escapeHtml(updateSettings.githubRepo || OFFICIAL_GITHUB_REPO)}</strong>) yeni yayınları ve kurulum dosyalarını otomatik denetler.</p>${updateBannerHtml}<div class="update-settings-form"><div class="embedded-repo-box"><div class="embedded-repo-info"><span class="control-label">GÖMÜLÜ RESMİ DAĞITIM KANALI</span><div class="repo-name-row"><span class="repo-icon">⚡</span><strong>github.com/${escapeHtml(updateSettings.githubRepo || OFFICIAL_GITHUB_REPO)}</strong><span class="embedded-pill">Otomatik Bağlı</span></div></div><button type="button" class="outline-button check-update-btn" data-action="check-updates" ${isUpdating || state.checkingUpdate ? 'disabled' : ''}>${isUpdating || state.checkingUpdate ? 'Denetleniyor…' : `${icon('arrow')} Şimdi Güncellemeleri Denetle`}</button></div><div class="update-actions-bar"><span class="last-checked-label">${updateSettings.lastCheckedAt ? `Son denetleme: ${formatDate(updateSettings.lastCheckedAt)}` : 'Açılışta otomatik denetlenir'}</span><button type="button" class="text-link-button" data-action="open-download" data-url="https://github.com/${escapeAttribute(updateSettings.githubRepo || OFFICIAL_GITHUB_REPO)}/releases">GitHub Releases Sayfasını Aç ↗</button></div></div></section></div><aside class="settings-guide">${isS3 ? `<div class="guide-card"><div class="guide-header"><span class="control-label">S3 &amp; CLOUDFLARE R2 KURULUMU</span><h3>API Anahtarı ve CORS Yapılandırması</h3></div><p>Cloudflare R2 veya Backblaze B2 kullanırken tarayıcıdan doğrudan klip aktarabilmek için bucket CORS kurallarını yapılandırmanız gerekir:</p><ol class="guide-steps"><li>Cloudflare panelinde <strong>R2 &gt; Overview &gt; Manage R2 API Tokens</strong> adımından yeni anahtar oluşturun (Object Read &amp; Write).</li><li>Oluşturulan <code>Endpoint URL</code>, <code>Access Key ID</code> ve <code>Secret Access Key</code> değerlerini forma yapıştırın.</li><li>R2 Bucket ayarlarında <strong>CORS Policy</strong> bölümüne şu JSON kuralını ekleyin:</li></ol><div class="sql-box"><pre><code id="cors-code">[
-  {
-    "AllowedOrigins": ["*"],
-    "AllowedMethods": ["GET", "PUT", "HEAD"],
-    "AllowedHeaders": ["*"],
-    "ExposeHeaders": ["ETag"],
-    "MaxAgeSeconds": 3000
-  }
-]</code></pre><button class="outline-button sql-copy-btn" type="button" data-action="copy-cors">Kopyala</button></div><div class="security-warning"><strong>Güvenlik Notu:</strong> Bilgiler yalnızca bu sekmenin oturumunda tutulur, hiçbir üçüncü taraf sunucuya aktarılmaz.</div></div><div class="guide-card quota-card free-alternatives-card"><div class="guide-header"><span class="control-label">NEDEN CLOUDFLARE R2?</span><h3>0$ Egress (Bant Genişliği) Avantajı</h3></div><ul class="quota-list"><li><strong>10 GB Kalıcı Depolama:</strong> Tamamen ücretsiz (~330 adet 30 saniyelik klip).</li><li><strong>0$ Bant Genişliği Ücreti:</strong> Klipleri dilediğiniz kadar indirebilir ve izleyebilirsiniz; çıkış transfer ücreti 0$'dır.</li><li><strong>5 TB Dosya Sınırı:</strong> Supabase'deki 50 MB sınırının aksine tek dosya sınırı 5 TB'tır.</li></ul><p class="quota-disclaimer">* Cloudflare R2 hesabı oluştururken doğrulama için kart istenebilir ancak kota aşılmadıkça faturalandırma yapılmaz.</p></div>` : `<div class="guide-card"><div class="guide-header"><span class="control-label">STORAGE KURULUMU &amp; RLS</span><h3>Erişim Politikası Yapılandırması</h3></div><p>Kliplerin yüklenebilmesi için Supabase panelinde Storage bucket'ınızda <code>INSERT</code> erişimine izin verilmelidir:</p><ol class="guide-steps"><li>Supabase &gt; Storage sekmesinden yeni bucket oluşturun (örn. <code>clips</code>).</li><li>Storage &gt; Policies veya SQL Editor sekmesinde şu kuralı çalıştırın:</li></ol><div class="sql-box"><pre><code>create policy "Allow uploads to clips"
-on storage.objects for insert
-with check ( bucket_id = 'clips' );</code></pre><button class="outline-button sql-copy-btn" type="button" data-action="copy-sql">Kopyala</button></div><div class="security-warning"><strong>Güvenlik Uyarısı:</strong> Asla <code>service_role</code> (gizli sunucu anahtarı) girmeyin. Yalnızca <code>anon</code> / <code>publishable</code> anahtarını kullanın.</div></div><div class="guide-card quota-card"><div class="guide-header"><span class="control-label">SAĞLAYICI KOTALARI</span><h3>Supabase Ücretsiz Planı Limitleri</h3></div><ul class="quota-list"><li><strong>Tekil Dosya Sınırı:</strong> Varsayılan olarak <strong>50 MB</strong>. Daha büyük boyuttaki kliplerde yükleme reddedilebilir.</li><li><strong>Toplam Depolama Kotası:</strong> Ücretsiz planda proje başına <strong>1 GB</strong>.</li><li><strong>Aylık Bant Genişliği (Egress):</strong> <strong>2 GB</strong>/ay.</li><li><strong>Proje Uyku Durumu:</strong> 7 gün boyunca istek almayan ücretsiz projeler otomatik duraklatılabilir.</li></ul><p class="quota-disclaimer">* Bu sınırlar Supabase platformuna aittir. Daha yüksek kotalar için yukarıdaki "S3 Uyumlu Depolama" sekmesini deneyebilirsiniz.</p></div>`}<div class="guide-card update-guide-card"><div class="guide-header"><span class="control-label">GÖMÜLÜ GÜNCELLEME SİSTEMİ</span><h3>zenxy177/Vexel-Clip</h3></div><p>Uygulama doğrudan resmi GitHub deponuza bağlıdır. GitHub üzerinde yeni bir sürüm (Release) oluşturup yeni <code>.exe</code> kurulum dosyasını eklediğinizde, kullanıcılar hiçbir ayar yapmadan güncellemeyi doğrudan görüp indirebilir.</p></div></aside></div></section>`;
+  const providers = Object.values(EMBEDDED_PROVIDERS);
+
+  return `<section class="workspace settings-workspace"><div class="page-heading"><div><h1>Ayarlar</h1><p>Arayüz temasını belirle, kayıt kalitesi profilini ayarla, bulut sağlayıcısını seç ve güncellemeleri denetle.</p></div></div><div class="settings-layout"><div class="settings-form-column"><section class="quality-card theme-card" aria-label="Arayüz ve Tema Ayarları"><div class="quality-card-head"><div><span class="control-label">GÖRÜNÜM AYARLARI</span><h2>Arayüz Teması</h2></div><span class="theme-active-badge">${state.theme === 'dark' ? '🌙 KOYU GRAFİT (SİYAH)' : '☀️ AÇIK TEMA'}</span></div><p class="quality-card-desc">Uygulamanın renk temasını seçin. Siyah tema göz yorgunluğunu azaltır ve gece kullanımı için yüksek kontrastlı net yazılar sunar.</p><div class="theme-btn-grid" role="radiogroup" aria-label="Arayüz teması"><button type="button" class="theme-choice-btn ${state.theme === 'dark' ? 'active' : ''}" data-action="set-theme" data-theme-val="dark"><div class="theme-btn-title">${icon('moon')}<strong>Koyu Grafit (Siyah)</strong></div><small>Modern slate siyahı (#0d1117 / #161f2e), parlak ve net yazılar</small></button><button type="button" class="theme-choice-btn ${state.theme === 'light' ? 'active' : ''}" data-action="set-theme" data-theme-val="light"><div class="theme-btn-title">${icon('sun')}<strong>Açık Tema (Klasik)</strong></div><small>Standart açık kağıt tonları (#f3f3ef), gündüz çalışma ortamı</small></button></div></section><section class="quality-card" aria-label="Kayıt kalitesi ve kodlama ayarları"><div class="quality-card-head"><div><span class="control-label">YAKALAMA &amp; KODLAMA PROFİLİ</span><h2>Kayıt Kalitesi ve Dışa Aktarma</h2></div><span class="quality-active-badge">${quality.fps} FPS · ${(quality.bitrate / 1000000).toFixed(0)} MBPS · ${quality.resolution === 'source' ? 'KAYNAK' : quality.resolution.toUpperCase()}</span></div><p class="quality-card-desc">Geri sarma tamponu ve kütüphaneden indirilen/kırpılan klipler bu kare hızı ve veri akış hızıyla kodlanır.</p><div class="quality-grid"><div class="quality-group"><span class="quality-group-label">KARE HIZI (FPS)</span><div class="quality-btn-row" role="radiogroup" aria-label="Kare hızı">${QUALITY_PRESETS.fpsList.map((item) => `<button type="button" class="quality-btn ${quality.fps === item.value ? 'active' : ''}" data-quality-key="fps" data-quality-value="${item.value}"><strong>${item.label}</strong><small>${item.hint}</small></button>`).join('')}</div></div><div class="quality-group"><span class="quality-group-label">ÇÖZÜNÜRLÜK</span><div class="quality-btn-row" role="radiogroup" aria-label="Çözünürlük">${QUALITY_PRESETS.resolutions.map((item) => `<button type="button" class="quality-btn ${quality.resolution === item.id ? 'active' : ''}" data-quality-key="resolution" data-quality-value="${item.id}"><strong>${item.label}</strong><small>${item.hint}</small></button>`).join('')}</div></div><div class="quality-group"><span class="quality-group-label">VİDEO BİTRATE (VERİ HIZI)</span><div class="quality-btn-row" role="radiogroup" aria-label="Bitrate">${QUALITY_PRESETS.bitrates.map((item) => `<button type="button" class="quality-btn ${quality.bitrate === item.value ? 'active' : ''}" data-quality-key="bitrate" data-quality-value="${item.value}"><strong>${item.label}</strong><small>${item.hint}</small></button>`).join('')}</div></div></div></section><section class="quality-card cloud-storage-card" aria-label="Bulut Depolama Sağlayıcıları"><div class="quality-card-head"><div><span class="control-label">BULUT DEPOLAMA MERKEZİ</span><h2>Bulut Depolama Sağlayıcıları</h2></div><span class="cloud-status-badge ${activeProvider.configured ? 'ready' : 'pending'}">${escapeHtml(activeProvider.name)} Seçili</span></div><p class="quality-card-desc">Tüm sağlayıcılar uygulamaya doğrudan gömülüdür. Form doldurmanıza veya karmaşık ayarlar yapmanıza gerek yoktur. İstediğiniz sağlayıcıyı seçip tek tıkla kullanabilirsiniz.</p>${testFeedback}<div class="embedded-provider-list">${providers.map((p) => {
+    const isSelected = p.id === activeProvider.id;
+    return `<div class="embedded-provider-row ${isSelected ? 'active' : ''}"><div class="provider-info-wrap"><div class="provider-title-row"><strong>${escapeHtml(p.name)}</strong><span class="no-card-pill">${escapeHtml(p.badge)}</span>${isSelected ? '<span class="active-pill">✓ AKTİF</span>' : ''}</div><span class="provider-quota-sub">${escapeHtml(p.quota)} · ${p.configured ? 'Bağlantı Hazır' : 'Anahtar Bekleniyor'}</span></div><div class="provider-row-actions"><button type="button" class="outline-button select-cloud-btn ${isSelected ? 'is-active' : ''}" data-action="select-cloud-provider" data-provider-id="${p.id}">${isSelected ? '✓ Seçili' : 'Kullan'}</button></div></div>`;
+  }).join('')}</div><div class="cloud-footer-actions"><button type="button" class="outline-button test-active-cloud-btn" data-action="test-active-cloud" ${state.testingConnection || !activeProvider.configured ? 'disabled' : ''}>${state.testingConnection ? 'Test Ediliyor…' : `⚡ ${escapeHtml(activeProvider.name)} Bağlantısını Test Et`}</button></div></section><section class="quality-card update-card" aria-label="Sürüm ve güncelleme denetleme"><div class="quality-card-head"><div><span class="control-label">YAZILIM GÜNCELLEMELERİ</span><h2>Sürüm ve Güncelleme Denetleyici</h2></div><div class="version-head-badge"><span class="version-badge">v${APP_VERSION}</span>${statusBadgeHtml}</div></div><p class="quality-card-desc">Velex Clip, resmi GitHub deponuzdaki (<strong>${escapeHtml(updateSettings.githubRepo || OFFICIAL_GITHUB_REPO)}</strong>) yeni yayınları ve kurulum dosyalarını otomatik denetler.</p>${updateBannerHtml}<div class="update-settings-form"><div class="embedded-repo-box"><div class="embedded-repo-info"><span class="control-label">GÖMÜLÜ RESMİ DAĞITIM KANALI</span><div class="repo-name-row"><span class="repo-icon">⚡</span><strong>github.com/${escapeHtml(updateSettings.githubRepo || OFFICIAL_GITHUB_REPO)}</strong><span class="embedded-pill">Otomatik Bağlı</span></div></div><button type="button" class="outline-button check-update-btn" data-action="check-updates" ${isUpdating || state.checkingUpdate ? 'disabled' : ''}>${isUpdating || state.checkingUpdate ? 'Denetleniyor…' : `${icon('arrow')} Şimdi Güncellemeleri Denetle`}</button></div><div class="update-actions-bar"><span class="last-checked-label">${updateSettings.lastCheckedAt ? `Son denetleme: ${formatDate(updateSettings.lastCheckedAt)}` : 'Açılışta otomatik denetlenir'}</span><button type="button" class="text-link-button" data-action="open-download" data-url="https://github.com/${escapeAttribute(updateSettings.githubRepo || OFFICIAL_GITHUB_REPO)}/releases">GitHub Releases Sayfasını Aç ↗</button></div></div></section></div></div></section>`;
 }
 
 function trimDialog() {
@@ -842,43 +912,12 @@ function bindEvents() {
       showToast('Klip adı güncellendi.');
     });
   }
-  app.querySelectorAll('[data-provider-tab]').forEach((button) => button.addEventListener('click', () => {
-    state.activeCloudProvider = button.dataset.providerTab;
-    const current = cloudConfig();
-    current.provider = state.activeCloudProvider;
-    sessionStorage.setItem(CLOUD_SETTINGS_KEY, JSON.stringify(current));
-    state.connectionTestResult = null;
-    render();
-  }));
-  app.querySelectorAll('[data-s3-preset]').forEach((button) => button.addEventListener('click', () => {
-    const preset = button.dataset.s3Preset;
-    const endpointInput = app.querySelector('#s3-endpoint-input');
-    const regionInput = app.querySelector('#s3-region-input');
-    const bucketInput = app.querySelector('#s3-bucket-input');
-    if (preset === 'r2') {
-      if (endpointInput) endpointInput.value = 'https://<hesap-id>.r2.cloudflarestorage.com';
-      if (regionInput) regionInput.value = 'auto';
-      if (bucketInput && !bucketInput.value) bucketInput.value = 'clips';
-      showToast('Cloudflare R2 şablonu uygulandı. Hesap ID ve anahtarlarınızı girin.');
-    } else if (preset === 'b2') {
-      if (endpointInput) endpointInput.value = 'https://s3.us-west-004.backblazeb2.com';
-      if (regionInput) regionInput.value = 'us-west-004';
-      if (bucketInput && !bucketInput.value) bucketInput.value = 'clips';
-      showToast('Backblaze B2 şablonu uygulandı. Key ID ve anahtarınızı girin.');
-    } else if (preset === 'minio') {
-      if (endpointInput) endpointInput.value = 'http://localhost:9000';
-      if (regionInput) regionInput.value = 'us-east-1';
-      if (bucketInput && !bucketInput.value) bucketInput.value = 'clips';
-      showToast('Yerel MinIO şablonu uygulandı.');
-    }
-  }));
   app.querySelectorAll('[data-update-source]').forEach((button) => button.addEventListener('click', () => {
     const current = getUpdateSettings();
     current.sourceType = button.dataset.updateSource;
     saveUpdateSettings(current);
     render();
   }));
-  app.querySelector('#cloud-settings')?.addEventListener('submit', saveCloudSettings);
   bindTrimControls();
 }
 
@@ -991,48 +1030,20 @@ async function handleAction(button) {
     }
     if (action === 'delete') await deleteClip(id);
     if (action === 'upload') await uploadClip(id, button);
-    if (action === 'clear-settings') clearCloudSettings();
     if (action === 'close-source-picker') closeSourcePicker();
     if (action === 'refresh-sources') await openSourcePicker();
-    if (action === 'test-connection') {
-      const form = app.querySelector('#cloud-settings');
-      if (form) {
-        const formData = new FormData(form);
-        const provider = formData.get('provider') || 'supabase';
-        if (provider === 's3') {
-          state.draftSettings = {
-            provider: 's3',
-            s3Endpoint: String(formData.get('s3Endpoint') || '').trim(),
-            s3Bucket: String(formData.get('s3Bucket') || '').trim(),
-            s3Region: String(formData.get('s3Region') || 'auto').trim(),
-            s3AccessKeyId: String(formData.get('s3AccessKeyId') || '').trim(),
-            s3SecretAccessKey: String(formData.get('s3SecretAccessKey') || '').trim(),
-            s3PublicUrl: String(formData.get('s3PublicUrl') || '').trim(),
-          };
-        } else {
-          state.draftSettings = {
-            provider: 'supabase',
-            url: String(formData.get('url') || '').trim(),
-            apiKey: String(formData.get('apiKey') || '').trim(),
-            bucket: String(formData.get('bucket') || '').trim(),
-            accessToken: String(formData.get('accessToken') || '').trim(),
-          };
-        }
+    if (action === 'select-cloud-provider') {
+      const providerId = button.dataset.providerId;
+      if (providerId && EMBEDDED_PROVIDERS[providerId]) {
+        state.activeCloudId = providerId;
+        localStorage.setItem('velex-clip-active-cloud', providerId);
+        state.connectionTestResult = null;
+        showToast(`${EMBEDDED_PROVIDERS[providerId].name} aktif sağlayıcı olarak seçildi.`);
+        render();
       }
-      await runConnectionTest(state.draftSettings);
     }
-    if (action === 'test-connection-from-cloud') {
-      await runConnectionTest(cloudConfig());
-    }
-    if (action === 'copy-sql') {
-      const sql = 'create policy "Allow uploads to clips"\non storage.objects for insert\nwith check ( bucket_id = \'clips\' );';
-      await navigator.clipboard.writeText(sql);
-      showToast('SQL politikası panoya kopyalandı.');
-    }
-    if (action === 'copy-cors') {
-      const corsJson = '[\n  {\n    "AllowedOrigins": ["*"],\n    "AllowedMethods": ["GET", "PUT", "HEAD"],\n    "AllowedHeaders": ["*"],\n    "ExposeHeaders": ["ETag"],\n    "MaxAgeSeconds": 3000\n  }\n]';
-      await navigator.clipboard.writeText(corsJson);
-      showToast('CORS JSON yapılandırması panoya kopyalandı.');
+    if (action === 'test-active-cloud' || action === 'test-connection' || action === 'test-connection-from-cloud') {
+      await runConnectionTest();
     }
     if (action === 'check-updates') {
       if (window.velexDesktop?.checkForUpdates) {
@@ -1482,100 +1493,7 @@ async function deleteClip(id) {
   showToast('Klip bu cihazdan silindi.');
 }
 
-const CLOUD_SETTINGS_KEY = 'velex-clip-cloud-settings';
 
-const EMBEDDED_CLOUD_CONFIG = {
-  provider: 's3',
-  s3Endpoint: 'https://77b8ab0686cc8803aaae1a80ffa492a3.eu.r2.cloudflarestorage.com',
-  s3Bucket: 'velex-clips',
-  s3Region: 'auto',
-  s3AccessKeyId: 'c8fbfbbc7f7227809dcae2c8a0dc730a',
-  s3SecretAccessKey: '7947401cfb0eaa98d2fa9bc13159db282102b2cc039d4ff5609790dd8107268f',
-  s3PublicUrl: '',
-};
-
-function cloudConfig() {
-  try {
-    const raw = sessionStorage.getItem(CLOUD_SETTINGS_KEY);
-    if (!raw) return { ...EMBEDDED_CLOUD_CONFIG };
-    const data = JSON.parse(raw);
-    return {
-      provider: data.provider || EMBEDDED_CLOUD_CONFIG.provider,
-      // Supabase
-      url: data.url || '',
-      apiKey: data.apiKey || '',
-      bucket: data.bucket || '',
-      accessToken: data.accessToken || '',
-      // S3 Uyumlu (Cloudflare R2 / Backblaze B2 / MinIO / AWS S3)
-      s3Endpoint: data.s3Endpoint || EMBEDDED_CLOUD_CONFIG.s3Endpoint,
-      s3Bucket: data.s3Bucket || EMBEDDED_CLOUD_CONFIG.s3Bucket,
-      s3Region: data.s3Region || EMBEDDED_CLOUD_CONFIG.s3Region,
-      s3AccessKeyId: data.s3AccessKeyId || EMBEDDED_CLOUD_CONFIG.s3AccessKeyId,
-      s3SecretAccessKey: data.s3SecretAccessKey || EMBEDDED_CLOUD_CONFIG.s3SecretAccessKey,
-      s3PublicUrl: data.s3PublicUrl || EMBEDDED_CLOUD_CONFIG.s3PublicUrl,
-    };
-  } catch {
-    return { ...EMBEDDED_CLOUD_CONFIG };
-  }
-}
-
-function saveCloudSettings(event) {
-  event.preventDefault();
-  const form = new FormData(event.currentTarget);
-  const provider = form.get('provider') || 'supabase';
-  const current = cloudConfig();
-
-  if (provider === 's3') {
-    const s3Endpoint = String(form.get('s3Endpoint') || '').trim().replace(/\/+$/, '');
-    try {
-      const parsed = new URL(s3Endpoint);
-      if (parsed.protocol !== 'https:' && parsed.protocol !== 'http:') throw new Error();
-    } catch {
-      showToast('Geçerli bir S3 uç nokta adresi gir (https:// veya http://).', 'error');
-      return;
-    }
-    sessionStorage.setItem(CLOUD_SETTINGS_KEY, JSON.stringify({
-      ...current,
-      provider: 's3',
-      s3Endpoint,
-      s3Bucket: String(form.get('s3Bucket') || '').trim(),
-      s3Region: String(form.get('s3Region') || 'auto').trim(),
-      s3AccessKeyId: String(form.get('s3AccessKeyId') || '').trim(),
-      s3SecretAccessKey: String(form.get('s3SecretAccessKey') || '').trim(),
-      s3PublicUrl: String(form.get('s3PublicUrl') || '').trim().replace(/\/+$/, ''),
-    }));
-  } else {
-    const url = String(form.get('url') || '').trim().replace(/\/+$/, '');
-    try {
-      if (new URL(url).protocol !== 'https:' && new URL(url).hostname !== 'localhost') throw new Error();
-    } catch {
-      showToast('Geçerli bir HTTPS proje adresi gir.', 'error');
-      return;
-    }
-    sessionStorage.setItem(CLOUD_SETTINGS_KEY, JSON.stringify({
-      ...current,
-      provider: 'supabase',
-      url,
-      apiKey: String(form.get('apiKey') || '').trim(),
-      bucket: String(form.get('bucket') || '').trim(),
-      accessToken: String(form.get('accessToken') || '').trim(),
-    }));
-  }
-
-  state.draftSettings = null;
-  state.connectionTestResult = null;
-  showToast('Bulut aktarım ayarları bu oturum için kaydedildi.');
-  state.page = 'cloud';
-  render();
-}
-
-function clearCloudSettings() {
-  sessionStorage.removeItem(CLOUD_SETTINGS_KEY);
-  state.draftSettings = null;
-  state.connectionTestResult = null;
-  showToast('Bulut bağlantı bilgileri temizlendi.');
-  render();
-}
 
 // S3 AWS Signature Version 4 (SigV4) Helpers using Web Crypto API
 async function hmacSha256(keyData, stringData) {
@@ -1701,7 +1619,8 @@ async function testS3Connection(config) {
 
     if (response.ok) {
       let providerName = 'S3 Uyumlu Depolama';
-      if (endpoint.includes('r2.cloudflarestorage.com')) providerName = 'Cloudflare R2 (10 GB Free + 0$ Egress)';
+      if (endpoint.includes('filebase.')) providerName = 'Filebase (5 GB Free · Kartsız)';
+      else if (endpoint.includes('r2.cloudflarestorage.com')) providerName = 'Cloudflare R2 (10 GB Free + 0$ Egress)';
       else if (endpoint.includes('backblazeb2.com')) providerName = 'Backblaze B2 (10 GB Free)';
       else if (endpoint.includes('localhost') || endpoint.includes('127.0.0.1')) providerName = 'Yerel MinIO';
 
@@ -1838,8 +1757,19 @@ async function runConnectionTest(customConfig = null) {
   render();
 
   try {
-    const config = customConfig || cloudConfig();
-    const result = config.provider === 's3'
+    const activeProvider = getActiveCloudProvider();
+    const config = customConfig || activeProvider.config;
+    if (!activeProvider.configured && !customConfig) {
+      state.connectionTestResult = {
+        success: false,
+        message: `${activeProvider.name} için henüz API anahtarı eklenmedi.`,
+        hint: 'Bu sağlayıcı için API anahtarını ilettiğinde hemen aktifleşecektir.',
+      };
+      showToast(state.connectionTestResult.message, 'error');
+      return;
+    }
+    const isS3 = (config.provider === 's3' || activeProvider.type === 's3');
+    const result = isS3
       ? await testS3Connection(config)
       : await testSupabaseConnection(config);
     state.connectionTestResult = result;
@@ -1862,26 +1792,20 @@ async function runConnectionTest(customConfig = null) {
 
 async function uploadClip(id, button) {
   const clip = state.clips.find((item) => item.id === id);
-  const config = cloudConfig();
+  const activeProvider = getActiveCloudProvider();
+  const config = activeProvider.config;
   if (!clip) throw new Error('Aktarılacak klip bulunamadı.');
 
-  const isS3 = config.provider === 's3';
+  if (!activeProvider.configured) {
+    state.page = 'settings';
+    render();
+    showToast(`${activeProvider.name} için henüz anahtar tanımlanmadı. Lütfen Ayarlar'dan hazır bir bulut seçin.`, 'error');
+    return;
+  }
 
-  if (isS3) {
-    if (!config.s3Endpoint || !config.s3Bucket || !config.s3AccessKeyId || !config.s3SecretAccessKey) {
-      state.page = 'settings';
-      render();
-      showToast('Önce S3 / Cloudflare R2 bulut bağlantını yapılandır.', 'error');
-      return;
-    }
-  } else {
-    if (!config.url || !config.apiKey || !config.bucket) {
-      state.page = 'settings';
-      render();
-      showToast('Önce Supabase Storage bağlantını yapılandır.', 'error');
-      return;
-    }
+  const isS3 = activeProvider.type === 's3' || config.provider === 's3';
 
+  if (!isS3) {
     const fileSizeMb = clip.blob.size / 1024 / 1024;
     if (fileSizeMb > 50) {
       const proceed = window.confirm(
@@ -1935,7 +1859,10 @@ async function uploadClip(id, button) {
       clip.cloudProvider = 's3';
       await databaseRequest('readwrite', 'put', clip);
       await loadClips();
-      const providerName = endpoint.includes('r2.cloudflarestorage.com') ? 'Cloudflare R2' : 'S3 bulut';
+      let providerName = 'S3 bulut';
+      if (endpoint.includes('filebase.')) providerName = 'Filebase';
+      else if (endpoint.includes('r2.cloudflarestorage.com')) providerName = 'Cloudflare R2';
+      else if (endpoint.includes('backblazeb2.com')) providerName = 'Backblaze B2';
       showToast(`Klip ${providerName} alanına başarıyla aktarıldı. Yerel kopya korunuyor.`, 'success');
     } else {
       const objectPath = `clips/${filename}`;
