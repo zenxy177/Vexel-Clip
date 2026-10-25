@@ -20,13 +20,13 @@ if (!TOKEN) {
 const OWNER = 'zenxy177';
 const REPO = 'Vexel-Clip';
 const TAG = `v${pkg.version}`;
-const NAME = `Velex Clip v${pkg.version} - Uygulama İçi Canlı Güncelleme ve Hata Düzeltmeleri`;
+const NAME = `Velex Clip v${pkg.version} - Koyu Grafit Siyah Tema & Yüksek Kontrast Desteği`;
 const BODY = `### Velex Clip v${pkg.version} Sürüm Notları
-- 🔄 **Yerel Güncelleme Sistemi (Native Updater)**: Uygulama içinden 'Güncellemeleri denetle' butonu ile yeni sürümleri otomatik sorgulama.
-- 📥 **Canlı İndirme İlerlemesi**: Yeni sürüm çıktığında 'Güncellemeyi İndir' butonu, anlık indirme yüzdesi, hız (MB/sn) ve aktarılan boyut göstergesi.
-- 🚀 **Tek Tıkla Kurulum**: İndirme bittiğinde 'Yeniden Başlat ve Yükle' butonu ile tek tıkla kurulum ve otomatik yeniden başlatma.
-- ⚡ **Gömülü Cloudflare R2 Bulut Aktarımı**: 10 GB ücretsiz kalıcı depolama ve sınırsız 0$ izleme/indirme trafiği.
-- 🛡️ **Hata İyileştirmeleri**: IndexedDB klip veritabanı kararlılığı ve CSP optimizasyonları.`;
+- 🖤 **Koyu Grafit (Siyah) Tema**: Göz yormayan, Discord/Slate tarzı modern derin siyah arayüz (#0d1117 / #161f2e).
+- 👁️ **Yüksek Kontrast & Net Okunabilirlik**: Başlıklar, butonlar, giriş alanları, etiketler ve zaman çizelgesindeki tüm metinler siyah zemin üzerinde kristal netliğe kavuşturuldu.
+- 🌓 **Tema Geçiş Düğmesi**: Üst bar ve Ayarlar sayfasından Koyu (Siyah) ve Açık temalar arasında tek tıkla anında geçiş yapabilme.
+- 🔄 **Uygulama İçi Canlı Güncelleyici**: Sürüm kontrolü, anlık indirme yüzdesi ve tek tıkla yükleme sistemi aktif.
+- ⚡ **Gömülü Cloudflare R2 Bulut Aktarımı**: 10 GB kalıcı depolama ve sınırsız 0$ izleme/indirme trafiği.`;
 
 async function publish() {
   const headers = {
