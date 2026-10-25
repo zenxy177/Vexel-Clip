@@ -20,7 +20,8 @@
     "preview": "vite preview --host 127.0.0.1",
     "desktop:dev": "concurrently -k -s first \"vite --host 127.0.0.1 --port 5173 --strictPort\" \"wait-on http://127.0.0.1:5173 && electron .\"",
     "desktop:pack": "npm run build && electron-builder --dir --win",
-    "desktop:dist": "npm run build && electron-builder --win nsis"
+    "desktop:dist": "npm run build && electron-builder --win nsis",
+    "desktop:release": "npm run desktop:dist && node scripts/publish-release.js"
   },
   "devDependencies": {
     "concurrently": "^9.2.5",
