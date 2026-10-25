@@ -82,11 +82,11 @@ svg { width: 19px; height: 19px; fill: none; stroke: currentColor; stroke-width:
 .app-shell { min-height: 100vh; background: var(--bg-app); }
 .rail { position: fixed; z-index: 5; inset: 0 auto 0 0; display: flex; width: 234px; flex-direction: column; padding: 26px 16px 20px; border-right: 1px solid var(--line); background: var(--bg-rail); }
 .brand { display: flex; align-items: center; gap: 12px; padding: 5px 8px 39px; color: var(--ink); text-decoration: none; }
-.brand-mark { display: flex; width: 28px; height: 28px; align-items: center; justify-content: center; gap: 2px; transform: skew(-10deg); background: var(--blue); }
-.brand-mark span { width: 3px; background: #fff; }
-.brand-mark span:nth-child(1) { height: 9px; }
-.brand-mark span:nth-child(2) { height: 16px; }
-.brand-mark span:nth-child(3) { height: 12px; }
+.brand-logo-wrap { display: flex; width: 34px; height: 34px; align-items: center; justify-content: center; flex-shrink: 0; filter: drop-shadow(0 2px 8px rgba(56, 189, 248, 0.25)); transition: transform .2s ease; }
+.brand:hover .brand-logo-wrap { transform: scale(1.08) rotate(-2deg); }
+.brand-logo-svg { width: 34px; height: 34px; display: block; }
+.topbar-logo-badge { display: flex; align-items: center; justify-content: center; width: 28px; height: 28px; flex-shrink: 0; filter: drop-shadow(0 2px 6px rgba(56, 189, 248, 0.2)); }
+.topbar-logo-badge svg { width: 28px; height: 28px; display: block; }
 .brand-name { font-size: 17px; font-weight: 800; letter-spacing: -.07em; color: var(--ink); }
 .brand-name span { margin-left: 3px; color: var(--blue); font-weight: 600; }
 .rail-label, .control-label, .bench-serial, .version, .breadcrumbs, .system-indicator, .library-count small, .library-toolbar, .queue-heading, .trim-fields label span { font: 500 10px/1.4 var(--mono); letter-spacing: .09em; }
@@ -590,12 +590,174 @@ svg { width: 19px; height: 19px; fill: none; stroke: currentColor; stroke-width:
 .updater-progress-track { width: 100%; height: 8px; background: #1e3350; border-radius: 4px; overflow: hidden; margin: 10px 0 6px; }
 .updater-progress-bar { height: 100%; background: var(--blue); transition: width .2s ease; border-radius: 4px; }
 .updater-progress-meta { display: flex; align-items: center; justify-content: space-between; font: 500 10px var(--mono); color: #93c5fd; }
-.quit-install-btn { background: #15803d; border-color: #166534; color: #fff; padding: 0 16px; height: 34px; font-weight: 700; }
-.quit-install-btn:hover { background: #166534; }
+.quit-install-btn { padding: 0 16px; height: 36px; font-weight: 700; }
 .update-banner-head { display: flex; align-items: center; justify-content: space-between; gap: 12px; flex-wrap: wrap; }
 .banner-title { display: flex; align-items: center; gap: 8px; font-size: 13px; color: inherit; }
 .release-date { font-size: 10px; opacity: .8; font-family: var(--mono); }
-.download-update-btn { padding: 0 14px; height: 32px; font-size: 11px; }
+.download-update-btn { padding: 0 14px; height: 36px; font-size: 11px; }
+
+/* Animated Action Buttons with pulsating neon green effect ("yeşil yanıp sönsün") */
+.animated-green-pulse {
+  position: relative !important;
+  background: #0f2e1c !important;
+  color: #4ade80 !important;
+  border: 1.5px solid #22c55e !important;
+  font-weight: 700 !important;
+  box-shadow: 0 0 0 0 rgba(34, 197, 94, 0.7);
+  animation: buttonNeonPulse 1.8s infinite ease-in-out !important;
+  overflow: visible !important;
+  display: inline-flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+  gap: 10px !important;
+  padding: 0 18px !important;
+  height: 38px !important;
+  border-radius: 4px !important;
+  cursor: pointer;
+  letter-spacing: .02em;
+  transition: all .2s ease;
+}
+
+.animated-green-pulse:hover {
+  background: #16462b !important;
+  border-color: #86efac !important;
+  box-shadow: 0 0 20px rgba(74, 222, 128, 0.6) !important;
+  transform: translateY(-1px);
+}
+
+@keyframes buttonNeonPulse {
+  0% {
+    box-shadow: 0 0 0 0 rgba(74, 222, 128, 0.8);
+    border-color: #22c55e;
+  }
+  50% {
+    box-shadow: 0 0 18px 4px rgba(74, 222, 128, 0.45);
+    border-color: #86efac;
+  }
+  100% {
+    box-shadow: 0 0 0 0 rgba(74, 222, 128, 0);
+    border-color: #22c55e;
+  }
+}
+
+/* Lively animated motion for download & rocket ("emojide hareketli olsun") */
+.btn-motion-icon {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  position: relative;
+}
+
+.motion-download svg {
+  width: 17px;
+  height: 17px;
+  stroke: #4ade80;
+  stroke-width: 2.2;
+  fill: none;
+  animation: motionDownloadBounce 1.1s infinite ease-in-out;
+}
+
+@keyframes motionDownloadBounce {
+  0%, 100% {
+    transform: translateY(-2px);
+  }
+  50% {
+    transform: translateY(3px);
+  }
+}
+
+.motion-rocket {
+  position: relative;
+  width: 22px;
+  height: 22px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.motion-rocket svg {
+  width: 19px;
+  height: 19px;
+  stroke: #4ade80;
+  stroke-width: 2;
+  fill: rgba(74, 222, 128, 0.25);
+  animation: motionRocketFlight 0.9s infinite alternate ease-in-out;
+}
+
+@keyframes motionRocketFlight {
+  0% {
+    transform: translate(-1.5px, 1.5px) rotate(-4deg);
+  }
+  100% {
+    transform: translate(2.5px, -2.5px) rotate(4deg) scale(1.12);
+  }
+}
+
+.rocket-trail {
+  position: absolute;
+  bottom: -3px;
+  left: -2px;
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  background: radial-gradient(circle, #fde047 0%, #f97316 65%, transparent 100%);
+  animation: rocketFlameGlow 0.35s infinite alternate;
+}
+
+@keyframes rocketFlameGlow {
+  0% {
+    transform: scale(0.75) translate(0, 0);
+    opacity: 0.6;
+  }
+  100% {
+    transform: scale(1.5) translate(-2px, 2px);
+    opacity: 1;
+  }
+}
+
+/* Custom Status Dots and Badge Icons */
+.pill-status-dot {
+  display: inline-block;
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  margin-right: 4px;
+}
+.pill-status-dot.ready {
+  background: #4ade80;
+  box-shadow: 0 0 6px #4ade80;
+}
+.pill-status-dot.pending {
+  background: #fbbf24;
+  box-shadow: 0 0 6px #fbbf24;
+}
+
+.repo-icon svg, .theme-active-badge svg, .feedback-icon svg {
+  width: 14px;
+  height: 14px;
+  display: inline-block;
+  vertical-align: middle;
+}
+.theme-active-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+}
+.feedback-title {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+.update-badge-pill svg {
+  width: 12px;
+  height: 12px;
+  display: inline-block;
+  vertical-align: middle;
+  margin-right: 4px;
+}
+.anim-spin-badge svg {
+  animation: motionDownloadBounce 1.1s infinite ease-in-out;
+}
 .update-notes-box { margin-top: 10px; padding: 10px; background: var(--bg-surface); border: 1px solid var(--line); border-radius: 3px; }
 .update-notes-box p { margin: 4px 0 0; color: var(--ink-secondary); font-size: 11px; line-height: 1.6; white-space: pre-wrap; max-height: 140px; overflow-y: auto; }
 

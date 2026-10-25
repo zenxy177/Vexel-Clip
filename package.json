@@ -1,7 +1,7 @@
 {
   "name": "velex-clip",
   "private": true,
-  "version": "0.1.4",
+  "version": "0.1.5",
   "description": "Replay capture and clip library for Windows desktop and web.",
   "author": "Velex Clip",
   "type": "module",

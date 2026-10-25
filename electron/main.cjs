@@ -3,7 +3,8 @@ const { autoUpdater } = require('electron-updater');
 const path = require('node:path');
 
 const devServerUrl = 'http://127.0.0.1:5173';
-const windowIcon = nativeImage.createFromDataURL(`data:image/svg+xml,${encodeURIComponent('<svg xmlns="http://www.w3.org/2000/svg" width="32" height="32" viewBox="0 0 32 32"><rect width="32" height="32" fill="#334fbd"/><path d="M8 11h3l2-3h7l2 3h3v13H8z" fill="none" stroke="#fff" stroke-width="2"/><circle cx="17.5" cy="17.5" r="4" fill="none" stroke="#fff" stroke-width="2"/></svg>')}`);
+const logoSvg = '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64" width="64" height="64" fill="none"><rect x="2" y="2" width="60" height="60" rx="14" fill="#0d1424" stroke="#38bdf8" stroke-width="2.5"/><path d="M14 16 H24 L32 38 L25 48 L14 16 Z" fill="#38bdf8"/><path d="M50 16 H40 L32 38 L39 48 L50 16 Z" fill="#818cf8"/><path d="M25 48 L32 54 L39 48 L32 37 Z" fill="#2563eb"/><path d="M29 21 L39 27 L29 33 Z" fill="#ffffff"/><circle cx="32" cy="18" r="4" fill="#ff4d4d"/><circle cx="32" cy="18" r="1.8" fill="#ffffff"/></svg>';
+const windowIcon = nativeImage.createFromDataURL(`data:image/svg+xml,${encodeURIComponent(logoSvg)}`);
 let mainWindow;
 let tray;
 let selectedSourceId;

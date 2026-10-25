@@ -20,13 +20,12 @@ if (!TOKEN) {
 const OWNER = 'zenxy177';
 const REPO = 'Vexel-Clip';
 const TAG = `v${pkg.version}`;
-const NAME = `Velex Clip v${pkg.version} - Filebase Entegrasyonu (Kartsız Bulut) & Temiz Arayüz`;
+const NAME = `Velex Clip v${pkg.version} - Yeni Logo, Özel İkonlar & Animasyonlu Güncelleyici`;
 const BODY = `### Velex Clip v${pkg.version} Sürüm Notları
-- ☁️ **Gömülü Filebase Bulut Depolama**: Kredi kartı gerektirmeyen Filebase S3 entegrasyonu (velex-stroge) doğrudan sisteme gömüldü.
-- 🧹 **Sade ve Temiz Arayüz**: Tüm karmaşık formlar, CORS/SQL kod kutuları ve kılavuz panelleri kaldırılarak doğrudan tek tıkla çalışan sağlayıcı seçicisi eklendi.
-- 🔄 **Tek Tıkla Bulut Değiştirme**: Bulut sekmesinden ve Ayarlar'dan sunucular arasında anında geçiş yapabilme ve canlı bağlantı testi.
-- 🖤 **Koyu Grafit Siyah Tema**: Yüksek kontrastlı, net okunabilir siyah arayüz korundu.
-- 🚀 **Otomatik Güncelleme**: Uygulama içi güncelleme desteği.`;
+- 💎 **Yeni Özel Velex Clip Logosu**: Siber estetik, neon mavi/indigo kanatlar ve dinamik kayıt vizörü içeren yepyeni kurumsal uygulama logosu.
+- 🎨 **Özel Vektör İkon Seti**: Tüm hazır/global işletim sistemi emojileri kaldırılarak Velex Clip'e özel stilize edilmiş vektör SVG ikon setine dönüştürüldü.
+- ⚡ **Animasyonlu Yeşil Güncelleme Düğmeleri**: "Güncellemeyi İndir" ve "Yeniden Başlat ve Yükle" butonları yeşil neon nabız efektiyle yanıp sönecek şekilde güncellendi.
+- 🚀 **Hareketli Canlı Eylemler**: Roket ve indirme ikonları hareketli ve dinamik itici alev efektleriyle canlı hale getirildi.`;
 
 async function publish() {
   const headers = {
