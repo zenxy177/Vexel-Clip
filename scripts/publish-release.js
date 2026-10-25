@@ -20,7 +20,13 @@ if (!TOKEN) {
 const OWNER = 'zenxy177';
 const REPO = 'Vexel-Clip';
 const TAG = `v${pkg.version}`;
-const NAME = `Velex Clip v${pkg.version}`;
+const NAME = `Velex Clip v${pkg.version} - Uygulama İçi Canlı Güncelleme ve Hata Düzeltmeleri`;
+const BODY = `### Velex Clip v${pkg.version} Sürüm Notları
+- 🔄 **Yerel Güncelleme Sistemi (Native Updater)**: Uygulama içinden 'Güncellemeleri denetle' butonu ile yeni sürümleri otomatik sorgulama.
+- 📥 **Canlı İndirme İlerlemesi**: Yeni sürüm çıktığında 'Güncellemeyi İndir' butonu, anlık indirme yüzdesi, hız (MB/sn) ve aktarılan boyut göstergesi.
+- 🚀 **Tek Tıkla Kurulum**: İndirme bittiğinde 'Yeniden Başlat ve Yükle' butonu ile tek tıkla kurulum ve otomatik yeniden başlatma.
+- ⚡ **Gömülü Cloudflare R2 Bulut Aktarımı**: 10 GB ücretsiz kalıcı depolama ve sınırsız 0$ izleme/indirme trafiği.
+- 🛡️ **Hata İyileştirmeleri**: IndexedDB klip veritabanı kararlılığı ve CSP optimizasyonları.`;
 
 async function publish() {
   const headers = {
@@ -46,49 +52,82 @@ async function publish() {
       body: JSON.stringify({
         tag_name: TAG,
         name: NAME,
-        body: `Velex Clip ${TAG} sürümü yayınlandı.`,
+        body: BODY,
         draft: false,
         prerelease: false,
       }),
     });
     if (!createRes.ok) throw new Error(`Release creation failed: ${await createRes.text()}`);
     release = await createRes.json();
+    console.log(`✓ Release created! ID: ${release.id}`);
+  } else {
+    console.log(`Release ${TAG} found! ID: ${release.id}`);
   }
 
-  const exeName = `Velex Clip Setup ${pkg.version}.exe`;
-  const exePath = path.join(rootDir, 'release', exeName);
-  if (!fs.existsSync(exePath)) {
-    throw new Error(`Build file not found at ${exePath}. Run npm run desktop:dist first.`);
-  }
+  // Refetch release to get fresh asset list
+  const freshReleaseRes = await fetch(`https://api.github.com/repos/${OWNER}/${REPO}/releases/${release.id}`, { headers });
+  if (freshReleaseRes.ok) release = await freshReleaseRes.json();
 
-  const stat = fs.statSync(exePath);
-  console.log(`Uploading ${exeName} (${(stat.size / 1024 / 1024).toFixed(1)} MB)...`);
+  async function uploadAsset(localPath, targetName, contentType = 'application/octet-stream') {
+    if (!fs.existsSync(localPath)) {
+      console.warn(`File not found, skipping: ${localPath}`);
+      return;
+    }
+    const stat = fs.statSync(localPath);
+    console.log(`Uploading ${targetName} (${(stat.size / 1024 / 1024).toFixed(2)} MB)...`);
 
-  const existingAsset = release.assets?.find((a) => a.name === exeName);
-  if (existingAsset) {
-    console.log(`Replacing existing asset ${existingAsset.id}...`);
-    await fetch(`https://api.github.com/repos/${OWNER}/${REPO}/releases/assets/${existingAsset.id}`, {
-      method: 'DELETE',
-      headers,
+    const existingAsset = release.assets?.find((a) => a.name === targetName);
+    if (existingAsset) {
+      console.log(`Replacing existing asset ${targetName} (${existingAsset.id})...`);
+      await fetch(`https://api.github.com/repos/${OWNER}/${REPO}/releases/assets/${existingAsset.id}`, {
+        method: 'DELETE',
+        headers,
+      });
+    }
+
+    const uploadUrl = `https://uploads.github.com/repos/${OWNER}/${REPO}/releases/${release.id}/assets?name=${encodeURIComponent(targetName)}`;
+    const buffer = fs.readFileSync(localPath);
+    const uploadRes = await fetch(uploadUrl, {
+      method: 'POST',
+      headers: {
+        ...headers,
+        'Content-Type': contentType,
+        'Content-Length': String(buffer.length),
+      },
+      body: buffer,
     });
+
+    if (!uploadRes.ok) {
+      throw new Error(`Failed to upload ${targetName} (${uploadRes.status}): ${await uploadRes.text()}`);
+    }
+    const asset = await uploadRes.json();
+    console.log(`✓ ${targetName} uploaded successfully: ${asset.browser_download_url}`);
   }
 
-  const uploadUrl = `https://uploads.github.com/repos/${OWNER}/${REPO}/releases/${release.id}/assets?name=${encodeURIComponent(exeName)}`;
-  const buffer = fs.readFileSync(exePath);
+  const releaseDir = path.join(rootDir, 'release');
+  const latestYmlPath = path.join(releaseDir, 'latest.yml');
+  const kebabExe = path.join(releaseDir, `Velex-Clip-Setup-${pkg.version}.exe`);
+  const spaceExe = path.join(releaseDir, `Velex Clip Setup ${pkg.version}.exe`);
+  const exePath = fs.existsSync(kebabExe) ? kebabExe : spaceExe;
 
-  const uploadRes = await fetch(uploadUrl, {
-    method: 'POST',
-    headers: {
-      ...headers,
-      'Content-Type': 'application/octet-stream',
-      'Content-Length': String(buffer.length),
-    },
-    body: buffer,
-  });
+  const kebabBlockmap = path.join(releaseDir, `Velex-Clip-Setup-${pkg.version}.exe.blockmap`);
+  const spaceBlockmap = path.join(releaseDir, `Velex Clip Setup ${pkg.version}.exe.blockmap`);
+  const blockmapPath = fs.existsSync(kebabBlockmap) ? kebabBlockmap : spaceBlockmap;
 
-  if (!uploadRes.ok) throw new Error(`Asset upload failed: ${await uploadRes.text()}`);
-  const asset = await uploadRes.json();
-  console.log(`Successfully published ${TAG}! Asset URL: ${asset.browser_download_url}`);
+  // Target names matching electron-builder / electron-updater manifest expectations
+  const manifestExeName = `Velex-Clip-Setup-${pkg.version}.exe`;
+  const manifestBlockmapName = `Velex-Clip-Setup-${pkg.version}.exe.blockmap`;
+
+  // 1. Upload latest.yml
+  await uploadAsset(latestYmlPath, 'latest.yml', 'text/yaml');
+
+  // 2. Upload manifest-named setup exe (Velex-Clip-Setup-X.X.X.exe)
+  await uploadAsset(exePath, manifestExeName, 'application/vnd.microsoft.portable-executable');
+
+  // 3. Upload blockmap
+  await uploadAsset(blockmapPath, manifestBlockmapName, 'application/octet-stream');
+
+  console.log(`\n🎉 Release ${TAG} is fully published and ready for electron-updater!`);
 }
 
 publish().catch((err) => {

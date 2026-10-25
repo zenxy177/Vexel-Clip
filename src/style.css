@@ -345,6 +345,14 @@ svg { width: 19px; height: 19px; fill: none; stroke: currentColor; stroke-width:
 .update-banner.update-available { background: #fdf3f0; border: 1px solid #ebbeb1; }
 .update-banner.up-to-date { display: flex; align-items: center; gap: 12px; background: #f2f8f4; border: 1px solid #b4dcce; color: #1e5a39; }
 .update-banner.update-error { background: #fdf4f4; border: 1px solid #f0c3c3; color: #9c2c2c; font-size: 11px; }
+.update-banner.update-downloading { background: #f0f4f9; border: 1px solid #bfd3eb; color: #1c3d66; }
+.update-banner.update-downloaded { background: #eaf4ed; border: 1px solid #a8d5b5; color: #144d29; }
+.updater-speed { font: 500 11px var(--mono); color: #43638c; }
+.updater-progress-track { width: 100%; height: 8px; background: #d7e3f1; border-radius: 4px; overflow: hidden; margin: 10px 0 6px; }
+.updater-progress-bar { height: 100%; background: var(--blue); transition: width .2s ease; border-radius: 4px; }
+.updater-progress-meta { display: flex; align-items: center; justify-content: space-between; font: 500 10px var(--mono); color: #5a7499; }
+.quit-install-btn { background: #1c7430; border-color: #176529; color: #fff; padding: 0 16px; height: 34px; font-weight: 700; }
+.quit-install-btn:hover { background: #155724; }
 .update-banner-head { display: flex; align-items: center; justify-content: space-between; gap: 12px; flex-wrap: wrap; }
 .banner-title { display: flex; align-items: center; gap: 8px; font-size: 13px; color: #8e2b16; }
 .release-date { font-size: 10px; opacity: .8; font-family: var(--mono); }

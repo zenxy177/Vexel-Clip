@@ -1,7 +1,7 @@
 {
   "name": "velex-clip",
   "private": true,
-  "version": "0.1.1",
+  "version": "0.1.2",
   "description": "Replay capture and clip library for Windows desktop and web.",
   "author": "Velex Clip",
   "type": "module",
@@ -60,7 +60,11 @@
       "createDesktopShortcut": true,
       "createStartMenuShortcut": true,
       "shortcutName": "Velex Clip",
+      "artifactName": "Velex-Clip-Setup-${version}.${ext}",
       "uninstallDisplayName": "Velex Clip"
     }
+  },
+  "dependencies": {
+    "electron-updater": "^6.8.11"
   }
 }

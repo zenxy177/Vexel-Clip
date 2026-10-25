@@ -1,4 +1,5 @@
 const { app, BrowserWindow, desktopCapturer, globalShortcut, ipcMain, Menu, nativeImage, session, shell, Tray } = require('electron');
+const { autoUpdater } = require('electron-updater');
 const path = require('node:path');
 
 const devServerUrl = 'http://127.0.0.1:5173';
@@ -62,6 +63,62 @@ function installCaptureHandler() {
   captureHandlerInstalled = true;
 }
 
+autoUpdater.autoDownload = false;
+autoUpdater.allowPrerelease = false;
+autoUpdater.autoInstallOnAppQuit = true;
+
+function sendToWindow(channel, data) {
+  if (mainWindow && !mainWindow.isDestroyed()) {
+    mainWindow.webContents.send(channel, data);
+  }
+}
+
+function setupAutoUpdater() {
+  autoUpdater.on('checking-for-update', () => {
+    sendToWindow('updater:status', { status: 'checking' });
+  });
+
+  autoUpdater.on('update-available', (info) => {
+    sendToWindow('updater:status', {
+      status: 'available',
+      version: info.version,
+      releaseDate: info.releaseDate,
+      releaseNotes: info.releaseNotes,
+    });
+  });
+
+  autoUpdater.on('update-not-available', (info) => {
+    sendToWindow('updater:status', {
+      status: 'not-available',
+      version: info.version,
+    });
+  });
+
+  autoUpdater.on('error', (err) => {
+    sendToWindow('updater:status', {
+      status: 'error',
+      message: err == null ? 'Bilinmeyen hata' : (err.message || String(err)),
+    });
+  });
+
+  autoUpdater.on('download-progress', (progressObj) => {
+    sendToWindow('updater:status', {
+      status: 'downloading',
+      percent: Math.round(progressObj.percent),
+      bytesPerSecond: progressObj.bytesPerSecond,
+      transferred: progressObj.transferred,
+      total: progressObj.total,
+    });
+  });
+
+  autoUpdater.on('update-downloaded', (info) => {
+    sendToWindow('updater:status', {
+      status: 'downloaded',
+      version: info.version,
+    });
+  });
+}
+
 function registerIpcHandlers() {
   ipcMain.handle('capture:list-sources', async (event) => {
     assertTrustedWindow(event);
@@ -98,6 +155,47 @@ function registerIpcHandlers() {
   ipcMain.handle('app:get-version', (event) => {
     assertTrustedWindow(event);
     return app.getVersion();
+  });
+
+  const handleCheckForUpdates = async (event) => {
+    assertTrustedWindow(event);
+    if (!app.isPackaged) {
+      sendToWindow('updater:status', {
+        status: 'dev',
+        message: 'Geliştirme modunda güncelleme denetimi çalışmaz. Paketlenmiş uygulama gerekir.',
+      });
+      return { isDev: true, message: 'Geliştirme modunda güncelleme denetimi çalışmaz. Paketlenmiş uygulama gerekir.' };
+    }
+    try {
+      sendToWindow('updater:status', { status: 'checking' });
+      const res = await autoUpdater.checkForUpdates();
+      return { success: true, updateInfo: res?.updateInfo };
+    } catch (error) {
+      sendToWindow('updater:status', { status: 'error', message: error.message });
+      return { success: false, error: error.message };
+    }
+  };
+
+  ipcMain.handle('updater:check', handleCheckForUpdates);
+  ipcMain.handle('check-for-updates', handleCheckForUpdates);
+
+  ipcMain.handle('updater:download', async (event) => {
+    assertTrustedWindow(event);
+    if (!app.isPackaged) throw new Error('Geliştirme modunda güncelleme indirilemez.');
+    sendToWindow('updater:status', { status: 'downloading', percent: 0, bytesPerSecond: 0, transferred: 0, total: 0 });
+    try {
+      await autoUpdater.downloadUpdate();
+      return true;
+    } catch (error) {
+      sendToWindow('updater:status', { status: 'error', message: error.message || String(error) });
+      throw error;
+    }
+  });
+
+  ipcMain.handle('updater:quit-and-install', (event) => {
+    assertTrustedWindow(event);
+    isQuitting = true;
+    autoUpdater.quitAndInstall(false, true);
   });
 
   ipcMain.handle('app:open-external', async (event, url) => {
@@ -213,6 +311,7 @@ function createWindow() {
 app.whenReady().then(() => {
   installCaptureHandler();
   registerIpcHandlers();
+  setupAutoUpdater();
   createWindow();
   createTray();
 

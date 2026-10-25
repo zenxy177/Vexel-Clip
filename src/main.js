@@ -49,9 +49,17 @@ const state = {
   activeCloudProvider: 's3',
   checkingUpdate: false,
   updateResult: null,
+  updater: {
+    status: 'idle',
+    version: null,
+    releaseDate: null,
+    releaseNotes: null,
+    progress: null,
+    error: null,
+  },
 };
 
-const APP_VERSION = '0.1.1';
+let APP_VERSION = '0.1.2';
 const OFFICIAL_GITHUB_REPO = 'zenxy177/Vexel-Clip';
 const UPDATE_SETTINGS_KEY = 'velex-clip-update-settings';
 
@@ -228,6 +236,12 @@ const formatTime = (seconds) => {
   return `${String(Math.floor(safeSeconds / 60)).padStart(2, '0')}:${String(safeSeconds % 60).padStart(2, '0')}`;
 };
 const formatDate = (timestamp) => new Intl.DateTimeFormat('tr-TR', { dateStyle: 'medium', timeStyle: 'short' }).format(timestamp);
+const formatBytes = (bytes) => {
+  if (!bytes || bytes <= 0) return '0 B';
+  const units = ['B', 'KB', 'MB', 'GB'];
+  const i = Math.min(Math.floor(Math.log(bytes) / Math.log(1024)), units.length - 1);
+  return `${(bytes / Math.pow(1024, i)).toFixed(1)} ${units[i]}`;
+};
 const icon = (name) => icons[name] || '';
 
 const QUALITY_SETTINGS_KEY = 'velex-clip-quality-settings';
@@ -367,7 +381,7 @@ function shell() {
         <div class="rail-bottom">
           <div class="rail-tip"><span class="tip-led"></span><span>Yerel kayıt<br><strong>Her zaman sende</strong></span></div>
           <button class="nav-item ${state.page === 'settings' ? 'active' : ''}" data-page="settings">${icon('settings')}<span>Ayarlar</span></button>
-          <button class="rail-version-btn" data-page="settings" title="Sürüm bilgisi ve güncellemeler">VELEX CLIP <span>${APP_VERSION}</span>${state.updateResult?.hasUpdate ? '<i class="update-pulse-dot" title="Yeni sürüm mevcut!"></i>' : ''}</button>
+          <button class="rail-version-btn" data-page="settings" title="Sürüm bilgisi ve güncellemeler">VELEX CLIP <span>${APP_VERSION}</span>${state.updater?.status === 'available' || state.updater?.status === 'downloaded' || state.updateResult?.hasUpdate ? '<i class="update-pulse-dot" title="Yeni sürüm mevcut!"></i>' : ''}</button>
         </div>
       </aside>
       <main class="main-area">
@@ -524,10 +538,43 @@ function settingsPage() {
   const isS3 = activeProvider === 's3';
   const testFeedback = state.connectionTestResult ? `<div class="test-feedback ${state.connectionTestResult.success ? 'success' : 'error'}" role="alert"><div class="feedback-title">${state.connectionTestResult.success ? '✓ BAĞLANTI BAŞARILI' : '⚠ BAĞLANTI BAŞARISIZ'}</div><p>${escapeHtml(state.connectionTestResult.message)}</p>${state.connectionTestResult.hint ? `<div class="feedback-hint">${escapeHtml(state.connectionTestResult.hint)}</div>` : ''}</div>` : '';
 
+  const u = state.updater;
+  const isUpdating = u.status === 'checking' || u.status === 'downloading';
+
+  let statusBadgeHtml = '';
+  if (u.status === 'available') {
+    statusBadgeHtml = '<span class="update-badge-pill update">⚡ YENİ SÜRÜM BULUNDU</span>';
+  } else if (u.status === 'downloading') {
+    statusBadgeHtml = '<span class="update-badge-pill update">📥 İNDİRİLİYOR</span>';
+  } else if (u.status === 'downloaded') {
+    statusBadgeHtml = '<span class="update-badge-pill current">✓ KURULUMA HAZIR</span>';
+  } else if (u.status === 'not-available') {
+    statusBadgeHtml = '<span class="update-badge-pill current">✓ GÜNCEL</span>';
+  } else if (updateInfo?.hasUpdate) {
+    statusBadgeHtml = '<span class="update-badge-pill update">⚡ YENİ SÜRÜM VAR</span>';
+  } else if (updateInfo?.success) {
+    statusBadgeHtml = '<span class="update-badge-pill current">✓ GÜNCEL</span>';
+  }
+
   let updateBannerHtml = '';
-  if (updateInfo) {
+  if (u.status === 'checking') {
+    updateBannerHtml = `<div class="update-banner" role="status"><div class="update-banner-head"><div class="banner-title"><span class="update-pulse-dot"></span><strong>Güncellemeler denetleniyor…</strong></div></div></div>`;
+  } else if (u.status === 'available') {
+    updateBannerHtml = `<div class="update-banner update-available" role="alert"><div class="update-banner-head"><div class="banner-title"><span class="update-pulse-dot"></span><strong>Yeni Sürüm Bulundu: v${escapeHtml(u.version)}</strong>${u.releaseDate ? `<span class="release-date">(${formatDate(u.releaseDate)})</span>` : ''}</div><button type="button" class="save-button download-update-btn" data-action="download-update">${icon('download')} Güncellemeyi İndir</button></div>${u.releaseNotes ? `<div class="update-notes-box"><span class="control-label">SÜRÜM NOTLARI</span><p>${escapeHtml(u.releaseNotes)}</p></div>` : ''}</div>`;
+  } else if (u.status === 'downloading') {
+    const p = u.progress || { percent: 0, bytesPerSecond: 0, transferred: 0, total: 0 };
+    updateBannerHtml = `<div class="update-banner update-downloading" role="status"><div class="update-banner-head"><div class="banner-title"><span class="update-pulse-dot"></span><strong>Güncelleme İndiriliyor: %${p.percent}</strong></div><span class="updater-speed">${formatBytes(p.bytesPerSecond)}/sn</span></div><div class="updater-progress-track"><div class="updater-progress-bar" style="width: ${p.percent}%"></div></div><div class="updater-progress-meta"><span>${formatBytes(p.transferred)} / ${formatBytes(p.total)}</span><span>%${p.percent}</span></div></div>`;
+  } else if (u.status === 'downloaded') {
+    updateBannerHtml = `<div class="update-banner update-downloaded" role="status"><div class="update-banner-head"><div class="banner-title"><span class="status-check-icon">${icon('check')}</span><div><strong>Güncelleme İndirildi!</strong><p>Yeni sürüm (v${escapeHtml(u.version)}) kuruluma hazır.</p></div></div><button type="button" class="save-button quit-install-btn" data-action="quit-and-install">🚀 Yeniden Başlat ve Yükle</button></div></div>`;
+  } else if (u.status === 'not-available') {
+    updateBannerHtml = `<div class="update-banner up-to-date" role="status"><span class="status-check-icon">${icon('check')}</span><div><strong>Velex Clip güncel!</strong><p>En son kararlı sürümü (v${APP_VERSION}) kullanıyorsunuz.</p></div></div>`;
+  } else if (u.status === 'dev') {
+    updateBannerHtml = `<div class="update-banner update-error" role="status"><strong>Geliştirici Modu:</strong><p>${escapeHtml(u.error || 'Geliştirme modunda güncelleme denetimi çalışmaz; kurulu/paketlenmiş uygulama gerekir.')}</p></div>`;
+  } else if (u.status === 'error' && u.error) {
+    updateBannerHtml = `<div class="update-banner update-error" role="alert"><strong>Güncelleme denetlenemedi:</strong><p>${escapeHtml(u.error)}</p></div>`;
+  } else if (updateInfo) {
     if (updateInfo.success && updateInfo.hasUpdate) {
-      updateBannerHtml = `<div class="update-banner update-available" role="alert"><div class="update-banner-head"><div class="banner-title"><span class="update-pulse-dot"></span><strong>Yeni Sürüm Mevcut: v${escapeHtml(updateInfo.latestVersion)}</strong>${updateInfo.publishedAt ? `<span class="release-date">(${formatDate(updateInfo.publishedAt)})</span>` : ''}</div>${updateInfo.downloadUrl ? `<button type="button" class="save-button download-update-btn" data-action="open-download" data-url="${escapeAttribute(updateInfo.downloadUrl)}">${icon('download')} İndir (v${escapeHtml(updateInfo.latestVersion)})</button>` : ''}</div>${updateInfo.notes ? `<div class="update-notes-box"><span class="control-label">SÜRÜM NOTLARI</span><p>${escapeHtml(updateInfo.notes)}</p></div>` : ''}</div>`;
+      updateBannerHtml = `<div class="update-banner update-available" role="alert"><div class="update-banner-head"><div class="banner-title"><span class="update-pulse-dot"></span><strong>Yeni Sürüm Mevcut: v${escapeHtml(updateInfo.latestVersion)}</strong>${updateInfo.publishedAt ? `<span class="release-date">(${formatDate(updateInfo.publishedAt)})</span>` : ''}</div><button type="button" class="save-button download-update-btn" data-action="download-update">${icon('download')} Güncellemeyi İndir</button></div>${updateInfo.notes ? `<div class="update-notes-box"><span class="control-label">SÜRÜM NOTLARI</span><p>${escapeHtml(updateInfo.notes)}</p></div>` : ''}</div>`;
     } else if (updateInfo.success && !updateInfo.hasUpdate) {
       updateBannerHtml = `<div class="update-banner up-to-date" role="status"><span class="status-check-icon">${icon('check')}</span><div><strong>Velex Clip güncel!</strong><p>En son kararlı sürümü (v${APP_VERSION}) kullanıyorsunuz.</p></div></div>`;
     } else if (!updateInfo.success && updateInfo.error) {
@@ -535,7 +582,7 @@ function settingsPage() {
     }
   }
 
-  return `<section class="workspace settings-workspace"><div class="page-heading"><div><h1>Ayarlar</h1><p>Kayıt kalitesi profilini belirle, bulut sağlayıcısını yapılandır ve güncellemeleri denetle.</p></div></div><div class="settings-layout"><div class="settings-form-column"><section class="quality-card" aria-label="Kayıt kalitesi ve kodlama ayarları"><div class="quality-card-head"><div><span class="control-label">YAKALAMA &amp; KODLAMA PROFİLİ</span><h2>Kayıt kalitesi ve dışa aktarma</h2></div><span class="quality-active-badge">${quality.fps} FPS · ${(quality.bitrate / 1000000).toFixed(0)} MBPS · ${quality.resolution === 'source' ? 'KAYNAK' : quality.resolution.toUpperCase()}</span></div><p class="quality-card-desc">Geri sarma tamponu ve kütüphaneden indirilen/kırpılan klipler bu kare hızı ve veri akış hızıyla kodlanır.</p><div class="quality-grid"><div class="quality-group"><span class="quality-group-label">KARE HIZI (FPS)</span><div class="quality-btn-row" role="radiogroup" aria-label="Kare hızı">${QUALITY_PRESETS.fpsList.map((item) => `<button type="button" class="quality-btn ${quality.fps === item.value ? 'active' : ''}" data-quality-key="fps" data-quality-value="${item.value}"><strong>${item.label}</strong><small>${item.hint}</small></button>`).join('')}</div></div><div class="quality-group"><span class="quality-group-label">ÇÖZÜNÜRLÜK</span><div class="quality-btn-row" role="radiogroup" aria-label="Çözünürlük">${QUALITY_PRESETS.resolutions.map((item) => `<button type="button" class="quality-btn ${quality.resolution === item.id ? 'active' : ''}" data-quality-key="resolution" data-quality-value="${item.id}"><strong>${item.label}</strong><small>${item.hint}</small></button>`).join('')}</div></div><div class="quality-group"><span class="quality-group-label">VİDEO BİTRATE (VERİ HIZI)</span><div class="quality-btn-row" role="radiogroup" aria-label="Bitrate">${QUALITY_PRESETS.bitrates.map((item) => `<button type="button" class="quality-btn ${quality.bitrate === item.value ? 'active' : ''}" data-quality-key="bitrate" data-quality-value="${item.value}"><strong>${item.label}</strong><small>${item.hint}</small></button>`).join('')}</div></div></div></section><section class="cloud-provider-section"><div class="card-head"><span class="control-label">BULUT DEPOLAMA SAĞLAYICISI</span><h2 class="settings-section-title">Bulut Aktarım Bağlantısı</h2></div><div class="provider-switch-tabs" role="tablist"><button type="button" class="provider-tab ${!isS3 ? 'active' : ''}" data-provider-tab="supabase"><strong>Supabase Storage</strong><small>1 GB Free · REST API</small></button><button type="button" class="provider-tab ${isS3 ? 'active' : ''}" data-provider-tab="s3"><strong>S3 Uyumlu Depolama</strong><small>Cloudflare R2 / B2 / MinIO · 10 GB Free</small></button></div>${testFeedback}${isS3 ? `<div class="s3-preset-bar"><span class="control-label">HIZLI ŞABLON:</span><button type="button" class="preset-pill" data-s3-preset="r2">⚡ Cloudflare R2 (10 GB Free + 0$ Egress)</button><button type="button" class="preset-pill" data-s3-preset="b2">⚡ Backblaze B2 (10 GB Free)</button><button type="button" class="preset-pill" data-s3-preset="minio">⚡ MinIO (Yerel S3)</button></div><form id="cloud-settings" class="settings-form s3-form"><input type="hidden" name="provider" value="s3"><label><span>S3 Uç Noktası (Endpoint URL)</span><input id="s3-endpoint-input" name="s3Endpoint" type="url" placeholder="https://<hesap-id>.r2.cloudflarestorage.com" value="${escapeAttribute(config.s3Endpoint)}" required></label><div class="form-row-2"><label><span>Bucket Adı</span><input id="s3-bucket-input" name="s3Bucket" type="text" placeholder="clips" value="${escapeAttribute(config.s3Bucket)}" required></label><label><span>Bölge (Region)</span><input id="s3-region-input" name="s3Region" type="text" placeholder="auto (veya us-east-1)" value="${escapeAttribute(config.s3Region || 'auto')}" required></label></div><label><span>Access Key ID</span><input name="s3AccessKeyId" type="text" autocomplete="off" placeholder="R2 / B2 / S3 Access Key ID" value="${escapeAttribute(config.s3AccessKeyId)}" required></label><label><span>Secret Access Key</span><input name="s3SecretAccessKey" type="password" autocomplete="off" placeholder="Secret Access Key" value="${escapeAttribute(config.s3SecretAccessKey)}" required></label><label><span>Public URL / CDN Adresi <small>(isteğe bağlı)</small></span><input name="s3PublicUrl" type="url" placeholder="https://pub-xxxx.r2.dev veya özel alan adınız" value="${escapeAttribute(config.s3PublicUrl)}"></label><p class="form-help">S3 uyumlu depolama motoru doğrudan istemci üzerinden AWS Signature v4 (SigV4) standardıyla kimlik doğrular. Klipler doğrudan kendi Cloudflare R2, Backblaze B2 veya yerel MinIO alanınıza aktarılır.</p><div class="settings-actions"><button class="save-button" type="submit">Ayarları kaydet ${icon('arrow')}</button><button class="outline-button" type="button" data-action="test-connection" ${state.testingConnection ? 'disabled' : ''}>${state.testingConnection ? 'Test ediliyor…' : 'Bağlantıyı test et'}</button><button class="text-button" type="button" data-action="clear-settings">Bilgileri temizle</button></div></form>` : `<form id="cloud-settings" class="settings-form supabase-form"><input type="hidden" name="provider" value="supabase"><label><span>Project URL</span><input name="url" type="url" placeholder="https://proje-id.supabase.co" value="${escapeAttribute(config.url)}" required></label><label><span>Anon / publishable key</span><input name="apiKey" type="password" autocomplete="off" placeholder="sb_publishable_..." value="${escapeAttribute(config.apiKey)}" required></label><label><span>Bucket adı</span><input name="bucket" type="text" placeholder="clips" value="${escapeAttribute(config.bucket)}" required></label><label><span>Oturum erişim belirteci <small>(isteğe bağlı)</small></span><input name="accessToken" type="password" autocomplete="off" placeholder="Supabase kullanıcı JWT" value="${escapeAttribute(config.accessToken)}"></label><p class="form-help">Supabase Storage'da bucket oluştur ve yüklemeye izin veren erişim kurallarını yapılandır. Bilgiler yalnızca bu sekmenin oturumunda tutulur; doğrudan Supabase URL'nize gönderilir.</p><div class="settings-actions"><button class="save-button" type="submit">Ayarları kaydet ${icon('arrow')}</button><button class="outline-button" type="button" data-action="test-connection" ${state.testingConnection ? 'disabled' : ''}>${state.testingConnection ? 'Test ediliyor…' : 'Bağlantıyı test et'}</button><button class="text-button" type="button" data-action="clear-settings">Bilgileri temizle</button></div></form>`}</section><section class="quality-card update-card" aria-label="Sürüm ve güncelleme denetleme"><div class="quality-card-head"><div><span class="control-label">YAZILIM GÜNCELLEMELERİ</span><h2>Sürüm ve Güncelleme Denetleyici</h2></div><div class="version-head-badge"><span class="version-badge">v${APP_VERSION}</span>${updateInfo?.hasUpdate ? '<span class="update-badge-pill update">⚡ YENİ SÜRÜM VAR</span>' : (updateInfo?.success ? '<span class="update-badge-pill current">✓ GÜNCEL</span>' : '')}</div></div><p class="quality-card-desc">Velex Clip, resmi GitHub deponuzdaki (<strong>${escapeHtml(updateSettings.githubRepo || OFFICIAL_GITHUB_REPO)}</strong>) yeni yayınları ve kurulum dosyalarını otomatik denetler.</p>${updateBannerHtml}<div class="update-settings-form"><div class="embedded-repo-box"><div class="embedded-repo-info"><span class="control-label">GÖMÜLÜ RESMİ DAĞITIM KANALI</span><div class="repo-name-row"><span class="repo-icon">⚡</span><strong>github.com/${escapeHtml(updateSettings.githubRepo || OFFICIAL_GITHUB_REPO)}</strong><span class="embedded-pill">Otomatik Bağlı</span></div></div><button type="button" class="outline-button check-update-btn" data-action="check-updates" ${state.checkingUpdate ? 'disabled' : ''}>${state.checkingUpdate ? 'Denetleniyor…' : `${icon('arrow')} Şimdi Güncellemeleri Denetle`}</button></div><div class="update-actions-bar"><span class="last-checked-label">${updateSettings.lastCheckedAt ? `Son denetleme: ${formatDate(updateSettings.lastCheckedAt)}` : 'Açılışta otomatik denetlenir'}</span><button type="button" class="text-link-button" data-action="open-download" data-url="https://github.com/${escapeAttribute(updateSettings.githubRepo || OFFICIAL_GITHUB_REPO)}/releases">GitHub Releases Sayfasını Aç ↗</button></div></div></section></div><aside class="settings-guide">${isS3 ? `<div class="guide-card"><div class="guide-header"><span class="control-label">S3 &amp; CLOUDFLARE R2 KURULUMU</span><h3>API Anahtarı ve CORS Yapılandırması</h3></div><p>Cloudflare R2 veya Backblaze B2 kullanırken tarayıcıdan doğrudan klip aktarabilmek için bucket CORS kurallarını yapılandırmanız gerekir:</p><ol class="guide-steps"><li>Cloudflare panelinde <strong>R2 &gt; Overview &gt; Manage R2 API Tokens</strong> adımından yeni anahtar oluşturun (Object Read &amp; Write).</li><li>Oluşturulan <code>Endpoint URL</code>, <code>Access Key ID</code> ve <code>Secret Access Key</code> değerlerini forma yapıştırın.</li><li>R2 Bucket ayarlarında <strong>CORS Policy</strong> bölümüne şu JSON kuralını ekleyin:</li></ol><div class="sql-box"><pre><code id="cors-code">[
+  return `<section class="workspace settings-workspace"><div class="page-heading"><div><h1>Ayarlar</h1><p>Kayıt kalitesi profilini belirle, bulut sağlayıcısını yapılandır ve güncellemeleri denetle.</p></div></div><div class="settings-layout"><div class="settings-form-column"><section class="quality-card" aria-label="Kayıt kalitesi ve kodlama ayarları"><div class="quality-card-head"><div><span class="control-label">YAKALAMA &amp; KODLAMA PROFİLİ</span><h2>Kayıt kalitesi ve dışa aktarma</h2></div><span class="quality-active-badge">${quality.fps} FPS · ${(quality.bitrate / 1000000).toFixed(0)} MBPS · ${quality.resolution === 'source' ? 'KAYNAK' : quality.resolution.toUpperCase()}</span></div><p class="quality-card-desc">Geri sarma tamponu ve kütüphaneden indirilen/kırpılan klipler bu kare hızı ve veri akış hızıyla kodlanır.</p><div class="quality-grid"><div class="quality-group"><span class="quality-group-label">KARE HIZI (FPS)</span><div class="quality-btn-row" role="radiogroup" aria-label="Kare hızı">${QUALITY_PRESETS.fpsList.map((item) => `<button type="button" class="quality-btn ${quality.fps === item.value ? 'active' : ''}" data-quality-key="fps" data-quality-value="${item.value}"><strong>${item.label}</strong><small>${item.hint}</small></button>`).join('')}</div></div><div class="quality-group"><span class="quality-group-label">ÇÖZÜNÜRLÜK</span><div class="quality-btn-row" role="radiogroup" aria-label="Çözünürlük">${QUALITY_PRESETS.resolutions.map((item) => `<button type="button" class="quality-btn ${quality.resolution === item.id ? 'active' : ''}" data-quality-key="resolution" data-quality-value="${item.id}"><strong>${item.label}</strong><small>${item.hint}</small></button>`).join('')}</div></div><div class="quality-group"><span class="quality-group-label">VİDEO BİTRATE (VERİ HIZI)</span><div class="quality-btn-row" role="radiogroup" aria-label="Bitrate">${QUALITY_PRESETS.bitrates.map((item) => `<button type="button" class="quality-btn ${quality.bitrate === item.value ? 'active' : ''}" data-quality-key="bitrate" data-quality-value="${item.value}"><strong>${item.label}</strong><small>${item.hint}</small></button>`).join('')}</div></div></div></section><section class="cloud-provider-section"><div class="card-head"><span class="control-label">BULUT DEPOLAMA SAĞLAYICISI</span><h2 class="settings-section-title">Bulut Aktarım Bağlantısı</h2></div><div class="provider-switch-tabs" role="tablist"><button type="button" class="provider-tab ${!isS3 ? 'active' : ''}" data-provider-tab="supabase"><strong>Supabase Storage</strong><small>1 GB Free · REST API</small></button><button type="button" class="provider-tab ${isS3 ? 'active' : ''}" data-provider-tab="s3"><strong>S3 Uyumlu Depolama</strong><small>Cloudflare R2 / B2 / MinIO · 10 GB Free</small></button></div>${testFeedback}${isS3 ? `<div class="s3-preset-bar"><span class="control-label">HIZLI ŞABLON:</span><button type="button" class="preset-pill" data-s3-preset="r2">⚡ Cloudflare R2 (10 GB Free + 0$ Egress)</button><button type="button" class="preset-pill" data-s3-preset="b2">⚡ Backblaze B2 (10 GB Free)</button><button type="button" class="preset-pill" data-s3-preset="minio">⚡ MinIO (Yerel S3)</button></div><form id="cloud-settings" class="settings-form s3-form"><input type="hidden" name="provider" value="s3"><label><span>S3 Uç Noktası (Endpoint URL)</span><input id="s3-endpoint-input" name="s3Endpoint" type="url" placeholder="https://<hesap-id>.r2.cloudflarestorage.com" value="${escapeAttribute(config.s3Endpoint)}" required></label><div class="form-row-2"><label><span>Bucket Adı</span><input id="s3-bucket-input" name="s3Bucket" type="text" placeholder="clips" value="${escapeAttribute(config.s3Bucket)}" required></label><label><span>Bölge (Region)</span><input id="s3-region-input" name="s3Region" type="text" placeholder="auto (veya us-east-1)" value="${escapeAttribute(config.s3Region || 'auto')}" required></label></div><label><span>Access Key ID</span><input name="s3AccessKeyId" type="text" autocomplete="off" placeholder="R2 / B2 / S3 Access Key ID" value="${escapeAttribute(config.s3AccessKeyId)}" required></label><label><span>Secret Access Key</span><input name="s3SecretAccessKey" type="password" autocomplete="off" placeholder="Secret Access Key" value="${escapeAttribute(config.s3SecretAccessKey)}" required></label><label><span>Public URL / CDN Adresi <small>(isteğe bağlı)</small></span><input name="s3PublicUrl" type="url" placeholder="https://pub-xxxx.r2.dev veya özel alan adınız" value="${escapeAttribute(config.s3PublicUrl)}"></label><p class="form-help">S3 uyumlu depolama motoru doğrudan istemci üzerinden AWS Signature v4 (SigV4) standardıyla kimlik doğrular. Klipler doğrudan kendi Cloudflare R2, Backblaze B2 veya yerel MinIO alanınıza aktarılır.</p><div class="settings-actions"><button class="save-button" type="submit">Ayarları kaydet ${icon('arrow')}</button><button class="outline-button" type="button" data-action="test-connection" ${state.testingConnection ? 'disabled' : ''}>${state.testingConnection ? 'Test ediliyor…' : 'Bağlantıyı test et'}</button><button class="text-button" type="button" data-action="clear-settings">Bilgileri temizle</button></div></form>` : `<form id="cloud-settings" class="settings-form supabase-form"><input type="hidden" name="provider" value="supabase"><label><span>Project URL</span><input name="url" type="url" placeholder="https://proje-id.supabase.co" value="${escapeAttribute(config.url)}" required></label><label><span>Anon / publishable key</span><input name="apiKey" type="password" autocomplete="off" placeholder="sb_publishable_..." value="${escapeAttribute(config.apiKey)}" required></label><label><span>Bucket adı</span><input name="bucket" type="text" placeholder="clips" value="${escapeAttribute(config.bucket)}" required></label><label><span>Oturum erişim belirteci <small>(isteğe bağlı)</small></span><input name="accessToken" type="password" autocomplete="off" placeholder="Supabase kullanıcı JWT" value="${escapeAttribute(config.accessToken)}"></label><p class="form-help">Supabase Storage'da bucket oluştur ve yüklemeye izin veren erişim kurallarını yapılandır. Bilgiler yalnızca bu sekmenin oturumunda tutulur; doğrudan Supabase URL'nize gönderilir.</p><div class="settings-actions"><button class="save-button" type="submit">Ayarları kaydet ${icon('arrow')}</button><button class="outline-button" type="button" data-action="test-connection" ${state.testingConnection ? 'disabled' : ''}>${state.testingConnection ? 'Test ediliyor…' : 'Bağlantıyı test et'}</button><button class="text-button" type="button" data-action="clear-settings">Bilgileri temizle</button></div></form>`}</section><section class="quality-card update-card" aria-label="Sürüm ve güncelleme denetleme"><div class="quality-card-head"><div><span class="control-label">YAZILIM GÜNCELLEMELERİ</span><h2>Sürüm ve Güncelleme Denetleyici</h2></div><div class="version-head-badge"><span class="version-badge">v${APP_VERSION}</span>${statusBadgeHtml}</div></div><p class="quality-card-desc">Velex Clip, resmi GitHub deponuzdaki (<strong>${escapeHtml(updateSettings.githubRepo || OFFICIAL_GITHUB_REPO)}</strong>) yeni yayınları ve kurulum dosyalarını otomatik denetler.</p>${updateBannerHtml}<div class="update-settings-form"><div class="embedded-repo-box"><div class="embedded-repo-info"><span class="control-label">GÖMÜLÜ RESMİ DAĞITIM KANALI</span><div class="repo-name-row"><span class="repo-icon">⚡</span><strong>github.com/${escapeHtml(updateSettings.githubRepo || OFFICIAL_GITHUB_REPO)}</strong><span class="embedded-pill">Otomatik Bağlı</span></div></div><button type="button" class="outline-button check-update-btn" data-action="check-updates" ${isUpdating || state.checkingUpdate ? 'disabled' : ''}>${isUpdating || state.checkingUpdate ? 'Denetleniyor…' : `${icon('arrow')} Şimdi Güncellemeleri Denetle`}</button></div><div class="update-actions-bar"><span class="last-checked-label">${updateSettings.lastCheckedAt ? `Son denetleme: ${formatDate(updateSettings.lastCheckedAt)}` : 'Açılışta otomatik denetlenir'}</span><button type="button" class="text-link-button" data-action="open-download" data-url="https://github.com/${escapeAttribute(updateSettings.githubRepo || OFFICIAL_GITHUB_REPO)}/releases">GitHub Releases Sayfasını Aç ↗</button></div></div></section></div><aside class="settings-guide">${isS3 ? `<div class="guide-card"><div class="guide-header"><span class="control-label">S3 &amp; CLOUDFLARE R2 KURULUMU</span><h3>API Anahtarı ve CORS Yapılandırması</h3></div><p>Cloudflare R2 veya Backblaze B2 kullanırken tarayıcıdan doğrudan klip aktarabilmek için bucket CORS kurallarını yapılandırmanız gerekir:</p><ol class="guide-steps"><li>Cloudflare panelinde <strong>R2 &gt; Overview &gt; Manage R2 API Tokens</strong> adımından yeni anahtar oluşturun (Object Read &amp; Write).</li><li>Oluşturulan <code>Endpoint URL</code>, <code>Access Key ID</code> ve <code>Secret Access Key</code> değerlerini forma yapıştırın.</li><li>R2 Bucket ayarlarında <strong>CORS Policy</strong> bölümüne şu JSON kuralını ekleyin:</li></ol><div class="sql-box"><pre><code id="cors-code">[
   {
     "AllowedOrigins": ["*"],
     "AllowedMethods": ["GET", "PUT", "HEAD"],
@@ -953,7 +1000,86 @@ async function handleAction(button) {
       showToast('CORS JSON yapılandırması panoya kopyalandı.');
     }
     if (action === 'check-updates') {
-      await checkForUpdates(false);
+      if (window.velexDesktop?.checkForUpdates) {
+        state.updater = {
+          status: 'checking',
+          version: null,
+          releaseDate: null,
+          releaseNotes: null,
+          progress: null,
+          error: null,
+        };
+        render();
+        try {
+          const res = await window.velexDesktop.checkForUpdates();
+          if (res?.isDev) {
+            state.updater = {
+              status: 'dev',
+              version: null,
+              releaseDate: null,
+              releaseNotes: null,
+              progress: null,
+              error: res.message,
+            };
+            render();
+            showToast(res.message, 'error');
+          } else if (res && !res.success && res.error) {
+            state.updater = {
+              status: 'error',
+              version: null,
+              releaseDate: null,
+              releaseNotes: null,
+              progress: null,
+              error: res.error,
+            };
+            render();
+            showToast(res.error, 'error');
+          }
+        } catch (err) {
+          state.updater = {
+            status: 'error',
+            version: null,
+            releaseDate: null,
+            releaseNotes: null,
+            progress: null,
+            error: err.message,
+          };
+          render();
+          showToast(`Güncelleme hatası: ${err.message}`, 'error');
+        }
+      } else {
+        await checkForUpdates(false);
+      }
+    }
+    if (action === 'download-update') {
+      if (window.velexDesktop?.downloadUpdate) {
+        state.updater = {
+          ...state.updater,
+          status: 'downloading',
+          progress: { percent: 0, bytesPerSecond: 0, transferred: 0, total: 0 },
+        };
+        render();
+        showToast('Güncelleme indirmesi başlatılıyor...', 'success');
+        try {
+          await window.velexDesktop.downloadUpdate();
+        } catch (err) {
+          state.updater = {
+            ...state.updater,
+            status: 'error',
+            error: err.message,
+          };
+          render();
+          showToast(`İndirme başarısız: ${err.message}`, 'error');
+        }
+      } else {
+        showToast('Güncelleme indirme sadece masaüstü uygulamasında çalışır.', 'error');
+      }
+    }
+    if (action === 'quit-and-install') {
+      if (window.velexDesktop?.quitAndInstall) {
+        showToast('Uygulama kapatılıyor ve güncelleme yükleniyor...', 'success');
+        window.velexDesktop.quitAndInstall();
+      }
     }
     if (action === 'save-update-source') {
       const current = getUpdateSettings();
@@ -1852,6 +1978,14 @@ async function initialize() {
 
   state.interval = null;
   if (window.velexDesktop) {
+    if (window.velexDesktop.getVersion) {
+      try {
+        const v = await window.velexDesktop.getVersion();
+        if (v) APP_VERSION = v;
+      } catch (err) {
+        console.warn('Uygulama sürümü alınamadı:', err);
+      }
+    }
     window.velexDesktop.onSaveShortcut(() => {
       if (state.recorder?.state === 'recording') {
         saveReplay().catch((error) => showToast(error.message, 'error'));
@@ -1861,13 +1995,95 @@ async function initialize() {
       }
     });
     window.velexDesktop.onStopCapture(stopCapture);
+    if (window.velexDesktop.onUpdaterStatus) {
+      window.velexDesktop.onUpdaterStatus((data) => {
+        if (!data) return;
+        if (data.status === 'checking') {
+          state.updater = {
+            status: 'checking',
+            version: null,
+            releaseDate: null,
+            releaseNotes: null,
+            progress: null,
+            error: null,
+          };
+        } else if (data.status === 'available') {
+          state.updater = {
+            status: 'available',
+            version: data.version,
+            releaseDate: data.releaseDate ? new Date(data.releaseDate).getTime() : null,
+            releaseNotes: data.releaseNotes || null,
+            progress: null,
+            error: null,
+          };
+          showToast(`Yeni sürüm bulundu: v${data.version}!`, 'success');
+        } else if (data.status === 'not-available') {
+          state.updater = {
+            status: 'not-available',
+            version: data.version || APP_VERSION,
+            releaseDate: null,
+            releaseNotes: null,
+            progress: null,
+            error: null,
+          };
+          showToast(`Velex Clip güncel (v${APP_VERSION}). En son sürümdesiniz.`, 'success');
+        } else if (data.status === 'downloading') {
+          state.updater = {
+            ...state.updater,
+            status: 'downloading',
+            progress: {
+              percent: data.percent ?? 0,
+              bytesPerSecond: data.bytesPerSecond ?? 0,
+              transferred: data.transferred ?? 0,
+              total: data.total ?? 0,
+            },
+          };
+        } else if (data.status === 'downloaded') {
+          state.updater = {
+            status: 'downloaded',
+            version: data.version,
+            releaseDate: null,
+            releaseNotes: null,
+            progress: null,
+            error: null,
+          };
+          showToast(`v${data.version} indirildi. Yeniden başlatmaya hazır!`, 'success');
+        } else if (data.status === 'dev') {
+          state.updater = {
+            status: 'dev',
+            version: null,
+            releaseDate: null,
+            releaseNotes: null,
+            progress: null,
+            error: data.message,
+          };
+        } else if (data.status === 'error') {
+          state.updater = {
+            status: 'error',
+            version: null,
+            releaseDate: null,
+            releaseNotes: null,
+            progress: null,
+            error: data.message,
+          };
+          showToast(`Güncelleme hatası: ${data.message}`, 'error');
+        }
+        render();
+      });
+    }
   }
 
   render();
 
   const updateSettings = getUpdateSettings();
   if (updateSettings.autoCheck) {
-    setTimeout(() => checkForUpdates(true), 2500);
+    setTimeout(() => {
+      if (window.velexDesktop?.checkForUpdates) {
+        window.velexDesktop.checkForUpdates().catch(() => {});
+      } else {
+        checkForUpdates(true);
+      }
+    }, 2500);
   }
 }
 

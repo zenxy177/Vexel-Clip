@@ -18,5 +18,14 @@ contextBridge.exposeInMainWorld('velexDesktop', Object.freeze({
     return () => ipcRenderer.removeListener('capture:stop', listener);
   },
   getVersion: () => ipcRenderer.invoke('app:get-version'),
+  checkForUpdates: () => ipcRenderer.invoke('updater:check'),
+  downloadUpdate: () => ipcRenderer.invoke('updater:download'),
+  quitAndInstall: () => ipcRenderer.invoke('updater:quit-and-install'),
+  onUpdaterStatus: (callback) => {
+    if (typeof callback !== 'function') throw new TypeError('Callback gerektirir.');
+    const listener = (_event, data) => callback(data);
+    ipcRenderer.on('updater:status', listener);
+    return () => ipcRenderer.removeListener('updater:status', listener);
+  },
   openExternal: (url) => ipcRenderer.invoke('app:open-external', url),
 }));
