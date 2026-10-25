@@ -75,6 +75,7 @@ const state = {
   trimUrl: null,
   testingConnection: false,
   connectionTestResult: null,
+  cloudConfigError: null,
   activeCloudId: localStorage.getItem('velex-clip-active-cloud') || 'filebase',
   checkingUpdate: false,
   updateResult: null,
@@ -92,43 +93,43 @@ const EMBEDDED_PROVIDERS = {
   filebase: {
     id: 'filebase',
     name: 'Filebase',
-    badge: '5 GB Kalıcı · Kartsız',
+    badge: 'S3 uyumlu · Hesap gerekir',
     type: 's3',
-    quota: '5 GB Kalıcı · Kredi Kartı İstemez',
-    configured: true,
+    quota: 'Plan ve kota sağlayıcıya göre değişir',
+    configured: false,
     config: {
       provider: 's3',
       s3Endpoint: 'https://s3.filebase.io',
-      s3Bucket: 'velex-stroge',
+      s3Bucket: '',
       s3Region: 'us-east-1',
-      s3AccessKeyId: 'B521137EF187A1143F3B',
-      s3SecretAccessKey: 'ykjCBAaVgPgnT5V6FHZFalB75Ytitgw7mGgW9IKT',
+      s3AccessKeyId: '',
+      s3SecretAccessKey: '',
       s3PublicUrl: '',
     },
   },
   r2: {
     id: 'r2',
     name: 'Cloudflare R2',
-    badge: '10 GB Free',
+    badge: 'S3 uyumlu · Hesap gerekir',
     type: 's3',
-    quota: '10 GB Kalıcı · $0 Egress',
-    configured: true,
+    quota: 'Plan ve kota sağlayıcıya göre değişir',
+    configured: false,
     config: {
       provider: 's3',
-      s3Endpoint: 'https://77b8ab0686cc8803aaae1a80ffa492a3.eu.r2.cloudflarestorage.com',
-      s3Bucket: 'velex-clips',
+      s3Endpoint: '',
+      s3Bucket: '',
       s3Region: 'auto',
-      s3AccessKeyId: 'c8fbfbbc7f7227809dcae2c8a0dc730a',
-      s3SecretAccessKey: '7947401cfb0eaa98d2fa9bc13159db282102b2cc039d4ff5609790dd8107268f',
+      s3AccessKeyId: '',
+      s3SecretAccessKey: '',
       s3PublicUrl: '',
     },
   },
   b2: {
     id: 'b2',
     name: 'Backblaze B2',
-    badge: 'Kredi Kartı İstemez',
+    badge: 'S3 uyumlu · Hesap gerekir',
     type: 's3',
-    quota: '10 GB Kalıcı · S3 Uyumlu',
+    quota: 'Plan ve kota sağlayıcıya göre değişir',
     configured: false,
     config: {
       provider: 's3',
@@ -143,9 +144,9 @@ const EMBEDDED_PROVIDERS = {
   supabase: {
     id: 'supabase',
     name: 'Supabase Storage',
-    badge: 'Kredi Kartı İstemez',
+    badge: 'Hesap gerekir',
     type: 'supabase',
-    quota: '1 GB Kalıcı · REST API',
+    quota: 'Plan ve kota sağlayıcıya göre değişir',
     configured: false,
     config: {
       provider: 'supabase',
@@ -161,6 +162,64 @@ function getActiveCloudProvider() {
   return EMBEDDED_PROVIDERS[state.activeCloudId] || EMBEDDED_PROVIDERS.filebase;
 }
 
+function isCloudProviderConfigured(provider) {
+  const config = provider.config;
+  if (provider.type === 's3') {
+    return Boolean(config.s3Endpoint && config.s3Bucket && config.s3AccessKeyId && config.s3SecretAccessKey);
+  }
+  return Boolean(config.url && config.apiKey && config.bucket);
+}
+
+async function loadCloudProviderConfigs() {
+  let configs;
+  if (window.velexDesktop?.getCloudConfigs) {
+    configs = await window.velexDesktop.getCloudConfigs();
+    if (!Object.keys(configs).length) {
+      const legacy = sessionStorage.getItem('velex-clip-cloud-configs');
+      if (legacy) {
+        configs = JSON.parse(legacy);
+        for (const provider of Object.values(EMBEDDED_PROVIDERS)) {
+          const saved = configs[provider.id];
+          if (saved && typeof saved === 'object') provider.config = { ...provider.config, ...saved };
+        }
+        await persistCloudProviderConfigs();
+      }
+    }
+    sessionStorage.removeItem('velex-clip-cloud-configs');
+  } else {
+    configs = JSON.parse(sessionStorage.getItem('velex-clip-cloud-configs') || '{}');
+  }
+  for (const provider of Object.values(EMBEDDED_PROVIDERS)) {
+    const saved = configs[provider.id];
+    if (saved && typeof saved === 'object') provider.config = { ...provider.config, ...saved };
+    provider.configured = isCloudProviderConfigured(provider);
+  }
+}
+
+async function persistCloudProviderConfigs() {
+  const configs = Object.fromEntries(
+    Object.values(EMBEDDED_PROVIDERS).map((provider) => [provider.id, provider.config]),
+  );
+  if (window.velexDesktop?.saveCloudConfigs) {
+    await window.velexDesktop.saveCloudConfigs(configs);
+    return;
+  }
+  try {
+    sessionStorage.setItem('velex-clip-cloud-configs', JSON.stringify(configs));
+  } catch (error) {
+    throw new Error(`Bulut ayarları oturumda saklanamadı: ${error instanceof Error ? error.message : 'depolama kullanılamıyor.'}`);
+  }
+}
+
+function parseCloudEndpoint(value) {
+  const endpoint = new URL(String(value || '').trim());
+  const isLoopback = ['localhost', '127.0.0.1', '[::1]'].includes(endpoint.hostname);
+  if (endpoint.protocol !== 'https:' && !(endpoint.protocol === 'http:' && isLoopback)) {
+    throw new Error('Bulut uç noktaları HTTPS kullanmalı. HTTP yalnızca yerel MinIO için kullanılabilir.');
+  }
+  return endpoint;
+}
+
 function cloudConfig() {
   return getActiveCloudProvider().config;
 }
@@ -168,7 +227,7 @@ function cloudConfig() {
 // Initial theme apply
 applyTheme(state.theme);
 
-let APP_VERSION = '0.1.6';
+let APP_VERSION = '0.1.7';
 const OFFICIAL_GITHUB_REPO = 'zenxy177/Vexel-Clip';
 const UPDATE_SETTINGS_KEY = 'velex-clip-update-settings';
 
@@ -702,6 +761,22 @@ function cloudPage() {
   return `<section class="workspace cloud-workspace"><div class="page-heading"><div><h1>Bulut Aktarımı</h1><p>Klipleriniz önce bu cihazda saklanır. Seçtiğiniz bulut sağlayıcısına tek tıkla doğrudan aktarabilirsiniz.</p></div><div class="cloud-header-status"><span class="provider-pill-badge">${escapeHtml(activeProvider.name)}</span><span class="cloud-state ${isConfigured ? 'configured' : ''}"><i></i>${isConfigured ? 'BAĞLANTI HAZIR' : 'ANAHTAR BEKLENİYOR'}</span></div></div><div class="cloud-provider-bar"><div class="cloud-bar-left"><span class="control-label">AKTİF BULUT:</span><div class="cloud-pill-selector" role="radiogroup" aria-label="Aktif Bulut Sağlayıcısı">${Object.values(EMBEDDED_PROVIDERS).map((p) => `<button type="button" class="cloud-pill-btn ${p.id === activeProvider.id ? 'active' : ''} ${p.configured ? '' : 'pending'}" data-action="select-cloud-provider" data-provider-id="${p.id}"><span class="pill-status-dot ${p.configured ? 'ready' : 'pending'}"></span><span>${escapeHtml(p.name)}</span><small>${p.configured ? 'Hazır' : 'Bekliyor'}</small></button>`).join('')}</div></div><div class="cloud-bar-actions"><button type="button" class="outline-button test-active-cloud-btn" data-action="test-active-cloud" ${state.testingConnection || !isConfigured ? 'disabled' : ''}>${state.testingConnection ? `${icon('settings')} Test Ediliyor…` : `${icon('bolt')} Bağlantıyı Test Et`}</button><button type="button" class="outline-button" data-page="settings">${icon('settings')} Ayarlar</button></div></div>${testFeedback}<section class="cloud-queue full-width-queue"><div class="queue-heading"><span class="control-label">AKTARILMAYA HAZIR KLİPLER</span><span>${state.clips.length} KLİP</span></div>${state.clips.length ? state.clips.map((clip) => `<div class="queue-row"><div class="queue-info"><strong>${escapeHtml(clip.name)}</strong><div class="queue-meta"><span>${Math.round(clip.blob.size / 1024 / 1024 * 10) / 10} MB · ${formatDate(clip.createdAt)}</span>${clip.uploadedAt ? `<span class="queue-status-badge uploaded"><i></i> Aktarıldı (${formatDate(clip.uploadedAt)})</span>` : '<span class="queue-status-badge"><i></i> Cihazda bekliyor</span>'}</div></div><button class="outline-button upload-action ${clip.uploadedAt ? 'uploaded' : ''}" data-action="upload" data-id="${clip.id}" ${isConfigured ? '' : 'disabled'}>${icon('upload')} ${clip.uploadedAt ? 'Tekrar Aktar' : 'Buluta Aktar'}</button></div>`).join('') : '<div class="queue-empty">Aktarım kuyruğu boş. Yakaladığınız yeni klipler burada listelenir.</div>'}</section></section>`;
 }
 
+function cloudProviderSettingsForm() {
+  const provider = getActiveCloudProvider();
+  const config = provider.config;
+  const fields = provider.type === 's3'
+    ? `<label><span>S3 uç noktası</span><input name="s3Endpoint" type="url" value="${escapeAttribute(config.s3Endpoint)}" placeholder="https://hesap.endpoint.example" required></label><label><span>Bucket adı</span><input name="s3Bucket" type="text" value="${escapeAttribute(config.s3Bucket)}" required></label><label><span>Region</span><input name="s3Region" type="text" value="${escapeAttribute(config.s3Region)}" placeholder="auto" required></label><label><span>Access Key ID</span><input name="s3AccessKeyId" type="password" autocomplete="off" value="${escapeAttribute(config.s3AccessKeyId)}" required></label><label><span>Secret Access Key</span><input name="s3SecretAccessKey" type="password" autocomplete="new-password" value="${escapeAttribute(config.s3SecretAccessKey)}" required></label>`
+    : `<label><span>Project URL</span><input name="url" type="url" value="${escapeAttribute(config.url)}" placeholder="https://proje-id.supabase.co" required></label><label><span>Anon / publishable key</span><input name="apiKey" type="password" autocomplete="off" value="${escapeAttribute(config.apiKey)}" required></label><label><span>Bucket adı</span><input name="bucket" type="text" value="${escapeAttribute(config.bucket)}" required></label><label><span>Oturum erişim belirteci <small>(isteğe bağlı)</small></span><input name="accessToken" type="password" autocomplete="new-password" value="${escapeAttribute(config.accessToken)}"></label>`;
+
+  const storageNotice = window.velexDesktop
+    ? 'Bulut bilgileri Windows güvenli kasasıyla şifrelenerek bu cihazda kalıcı saklanır. Aktarım sırasında uygulama tarafından kullanılır; kaynak koda eklenmez.'
+    : 'Bulut bilgileri yalnızca bu tarayıcı oturumu boyunca sessionStorage alanında tutulur. Kalıcı veya işletim sistemi düzeyinde şifreli saklama yapılmaz.';
+  const storageError = state.cloudConfigError
+    ? `<p class="cloud-config-warning" role="alert">${escapeHtml(state.cloudConfigError)}</p>`
+    : '';
+  return `<form id="cloud-provider-form" class="cloud-provider-config-form"><div class="quality-card-head"><div><span class="control-label">SAĞLAYICI AYARLARI</span><h3>${escapeHtml(provider.name)} erişimi</h3></div><span class="cloud-status-badge ${provider.configured ? 'ready' : 'pending'}">${provider.configured ? 'Yapılandırıldı' : 'Bilgi gerekli'}</span></div><div class="cloud-config-fields">${fields}</div><p class="cloud-config-warning">${storageNotice}</p>${storageError}<div class="custom-panel-actions"><button class="save-button" type="submit">Ayarları kaydet</button><button class="reset-custom-quality-btn" type="button" data-action="clear-cloud-config">Bu sağlayıcının bilgilerini temizle</button></div></form>`;
+}
+
 function settingsPage() {
   const activeProvider = getActiveCloudProvider();
   const quality = getQualitySettings();
@@ -762,7 +837,11 @@ function settingsPage() {
 
   const providers = Object.values(EMBEDDED_PROVIDERS);
 
-  return `<section class="workspace settings-workspace"><div class="page-heading"><div><h1>Ayarlar</h1><p>Arayüz temasını belirle, kayıt kalitesi profilini ayarla, bulut sağlayıcısını seç ve güncellemeleri denetle.</p></div></div><div class="settings-layout"><div class="settings-form-column"><section class="quality-card theme-card" aria-label="Arayüz ve Tema Ayarları"><div class="quality-card-head"><div><span class="control-label">GÖRÜNÜM AYARLARI</span><h2>Arayüz Teması</h2></div><span class="theme-active-badge">${state.theme === 'dark' ? `${icon('moon')} KOYU GRAFİT` : `${icon('sun')} AÇIK TEMA`}</span></div><p class="quality-card-desc">Uygulamanın renk temasını seçin. Siyah tema göz yorgunluğunu azaltır ve gece kullanımı için yüksek kontrastlı net yazılar sunar.</p><div class="theme-btn-grid" role="radiogroup" aria-label="Arayüz teması"><button type="button" class="theme-choice-btn ${state.theme === 'dark' ? 'active' : ''}" data-action="set-theme" data-theme-val="dark"><div class="theme-btn-title">${icon('moon')}<strong>Koyu Grafit (Siyah)</strong></div><small>Modern slate siyahı (#0d1117 / #161f2e), parlak ve net yazılar</small></button><button type="button" class="theme-choice-btn ${state.theme === 'light' ? 'active' : ''}" data-action="set-theme" data-theme-val="light"><div class="theme-btn-title">${icon('sun')}<strong>Açık Tema (Klasik)</strong></div><small>Standart açık kağıt tonları (#f3f3ef), gündüz çalışma ortamı</small></button></div></section><section class="quality-card" aria-label="Kayıt kalitesi ve kodlama ayarları"><div class="quality-card-head"><div><span class="control-label">YAKALAMA &amp; KODLAMA PROFİLİ</span><h2>Kayıt Kalitesi ve Dışa Aktarma</h2></div><span class="quality-active-badge">${formatQualityBadge(quality)}</span></div><p class="quality-card-desc">Geri sarma tamponu ve kütüphaneden indirilen/kırpılan klipler bu kare hızı, çözünürlük ve veri akış hızıyla kodlanır. Hazır profillerden birini seçebilir veya aşağıdaki panelden özel değerler belirleyebilirsiniz.</p><div class="quality-grid"><div class="quality-group"><span class="quality-group-label">KARE HIZI (FPS)</span><div class="quality-btn-row" role="radiogroup" aria-label="Kare hızı">${QUALITY_PRESETS.fpsList.map((item) => {
+  const providerConfigFields = activeProvider.type === 's3'
+    ? `<label><span>S3 uç noktası</span><input name="s3Endpoint" type="url" value="${escapeAttribute(activeProvider.config.s3Endpoint)}" placeholder="https://account.endpoint.example" required></label><label><span>Bucket adı</span><input name="s3Bucket" type="text" value="${escapeAttribute(activeProvider.config.s3Bucket)}" required></label><label><span>Region</span><input name="s3Region" type="text" value="${escapeAttribute(activeProvider.config.s3Region)}" placeholder="auto" required></label><label><span>Access Key ID</span><input name="s3AccessKeyId" type="password" autocomplete="off" value="${escapeAttribute(activeProvider.config.s3AccessKeyId)}" required></label><label><span>Secret Access Key</span><input name="s3SecretAccessKey" type="password" autocomplete="off" value="${escapeAttribute(activeProvider.config.s3SecretAccessKey)}" required></label>`
+    : `<label><span>Project URL</span><input name="url" type="url" value="${escapeAttribute(activeProvider.config.url)}" placeholder="https://proje-id.supabase.co" required></label><label><span>Anon / publishable key</span><input name="apiKey" type="password" autocomplete="off" value="${escapeAttribute(activeProvider.config.apiKey)}" required></label><label><span>Bucket adı</span><input name="bucket" type="text" value="${escapeAttribute(activeProvider.config.bucket)}" required></label><label><span>Oturum erişim belirteci <small>(isteğe bağlı)</small></span><input name="accessToken" type="password" autocomplete="off" value="${escapeAttribute(activeProvider.config.accessToken)}"></label>`;
+
+  return `<section class="workspace settings-workspace"><div class="page-heading"><div><h1>Ayarlar</h1><p>Arayüz temasını belirle, kayıt kalitesini ayarla, kendi bulut hesabını yapılandır ve güncellemeleri denetle.</p></div></div><div class="settings-layout"><div class="settings-form-column"><section class="quality-card theme-card" aria-label="Arayüz ve Tema Ayarları"><div class="quality-card-head"><div><span class="control-label">GÖRÜNÜM AYARLARI</span><h2>Arayüz Teması</h2></div><span class="theme-active-badge">${state.theme === 'dark' ? `${icon('moon')} KOYU GRAFİT` : `${icon('sun')} AÇIK TEMA`}</span></div><p class="quality-card-desc">Uygulamanın renk temasını seçin. Siyah tema göz yorgunluğunu azaltır ve gece kullanımı için yüksek kontrastlı net yazılar sunar.</p><div class="theme-btn-grid" role="radiogroup" aria-label="Arayüz teması"><button type="button" class="theme-choice-btn ${state.theme === 'dark' ? 'active' : ''}" data-action="set-theme" data-theme-val="dark"><div class="theme-btn-title">${icon('moon')}<strong>Koyu Grafit (Siyah)</strong></div><small>Modern slate siyahı (#0d1117 / #161f2e), parlak ve net yazılar</small></button><button type="button" class="theme-choice-btn ${state.theme === 'light' ? 'active' : ''}" data-action="set-theme" data-theme-val="light"><div class="theme-btn-title">${icon('sun')}<strong>Açık Tema (Klasik)</strong></div><small>Standart açık kağıt tonları (#f3f3ef), gündüz çalışma ortamı</small></button></div></section><section class="quality-card" aria-label="Kayıt kalitesi ve kodlama ayarları"><div class="quality-card-head"><div><span class="control-label">YAKALAMA &amp; KODLAMA PROFİLİ</span><h2>Kayıt Kalitesi ve Dışa Aktarma</h2></div><span class="quality-active-badge">${formatQualityBadge(quality)}</span></div><p class="quality-card-desc">Geri sarma tamponu ve kütüphaneden indirilen/kırpılan klipler bu kare hızı, çözünürlük ve veri akış hızıyla kodlanır. Hazır profillerden birini seçebilir veya aşağıdaki panelden özel değerler belirleyebilirsiniz.</p><div class="quality-grid"><div class="quality-group"><span class="quality-group-label">KARE HIZI (FPS)</span><div class="quality-btn-row" role="radiogroup" aria-label="Kare hızı">${QUALITY_PRESETS.fpsList.map((item) => {
       const isActive = item.value === 'custom' ? quality.isCustomFps : (!quality.isCustomFps && quality.fps === item.value);
       return `<button type="button" class="quality-btn ${isActive ? 'active' : ''}" data-quality-key="fps" data-quality-value="${item.value}"><strong>${item.label}</strong><small>${item.hint}</small></button>`;
     }).join('')}</div></div><div class="quality-group"><span class="quality-group-label">ÇÖZÜNÜRLÜK (GRAFİK KALİTESİ)</span><div class="quality-btn-row" role="radiogroup" aria-label="Çözünürlük">${QUALITY_PRESETS.resolutions.map((item) => {
@@ -887,6 +966,16 @@ function render() {
   if (state.trimUrl) URL.revokeObjectURL(state.trimUrl);
   state.trimUrl = null;
   app.innerHTML = shell();
+  if (state.page === 'settings') {
+    const cloudCard = app.querySelector('.cloud-storage-card');
+    if (cloudCard) {
+      const description = cloudCard.querySelector('.quality-card-desc');
+      if (description) {
+        description.textContent = 'Bir sağlayıcı seçin ve kendi erişim bilgilerinizi girin. Paylaşılan veya uygulamaya gömülü bulut anahtarı kullanılmaz.';
+      }
+      cloudCard.insertAdjacentHTML('beforeend', cloudProviderSettingsForm());
+    }
+  }
   bindEvents();
   if (state.stream) {
     const preview = app.querySelector('.source-feed');
@@ -925,7 +1014,68 @@ function showToast(message, type = 'success') {
   window.setTimeout(() => toast.remove(), 4200);
 }
 
+async function saveCloudProviderConfig(event) {
+  event.preventDefault();
+  const provider = getActiveCloudProvider();
+  const values = new FormData(event.currentTarget);
+  const config = { ...provider.config };
+
+  if (provider.type === 's3') {
+    const endpoint = String(values.get('s3Endpoint') || '').trim().replace(/\/+$/, '');
+    try {
+      parseCloudEndpoint(endpoint);
+    } catch {
+      showToast('S3 uç noktası HTTPS olmalı. Yalnızca yerel MinIO için HTTP kullanılabilir.', 'error');
+      return;
+    }
+    config.s3Endpoint = endpoint;
+    config.s3Bucket = String(values.get('s3Bucket') || '').trim();
+    config.s3Region = String(values.get('s3Region') || '').trim();
+    config.s3AccessKeyId = String(values.get('s3AccessKeyId') || '').trim();
+    config.s3SecretAccessKey = String(values.get('s3SecretAccessKey') || '').trim();
+    if (!config.s3Bucket || !config.s3Region || !config.s3AccessKeyId || !config.s3SecretAccessKey) {
+      showToast('Bucket, region ve S3 erişim bilgilerini doldur.', 'error');
+      return;
+    }
+  } else {
+    const url = String(values.get('url') || '').trim().replace(/\/+$/, '');
+    try {
+      parseCloudEndpoint(url);
+    } catch {
+      showToast('Geçerli bir HTTPS Supabase proje adresi gir.', 'error');
+      return;
+    }
+    config.url = url;
+    config.apiKey = String(values.get('apiKey') || '').trim();
+    config.bucket = String(values.get('bucket') || '').trim();
+    config.accessToken = String(values.get('accessToken') || '').trim();
+    if (!config.apiKey || !config.bucket) {
+      showToast('Supabase API anahtarı ve bucket adını doldur.', 'error');
+      return;
+    }
+  }
+
+  const previousConfig = provider.config;
+  provider.config = config;
+  provider.configured = isCloudProviderConfigured(provider);
+  try {
+    await persistCloudProviderConfigs();
+  } catch (error) {
+    provider.config = previousConfig;
+    provider.configured = isCloudProviderConfigured(provider);
+    showToast(error.message, 'error');
+    return;
+  }
+  state.cloudConfigError = null;
+  state.connectionTestResult = null;
+  render();
+  showToast(window.velexDesktop
+    ? `${provider.name} ayarları bu cihazda şifreli olarak kaydedildi.`
+    : `${provider.name} ayarları bu tarayıcı oturumu için kaydedildi.`);
+}
+
 function bindEvents() {
+  app.querySelector('#cloud-provider-form')?.addEventListener('submit', saveCloudProviderConfig);
   app.querySelectorAll('[data-page]').forEach((button) => button.addEventListener('click', (event) => {
     event.preventDefault();
     state.page = button.dataset.page;
@@ -1195,6 +1345,35 @@ async function handleAction(button) {
         showToast(`${EMBEDDED_PROVIDERS[providerId].name} aktif sağlayıcı olarak seçildi.`);
         render();
       }
+    }
+    if (action === 'clear-cloud-config') {
+      const provider = getActiveCloudProvider();
+      const previousConfig = provider.config;
+      const nextConfig = provider.type === 's3'
+        ? {
+            provider: 's3',
+            s3Endpoint: provider.id === 'filebase' ? 'https://s3.filebase.io' : '',
+            s3Bucket: '',
+            s3Region: provider.id === 'filebase' ? 'us-east-1' : 'auto',
+            s3AccessKeyId: '',
+            s3SecretAccessKey: '',
+            s3PublicUrl: '',
+          }
+        : { provider: 'supabase', url: '', apiKey: '', bucket: '', accessToken: '' };
+      provider.config = nextConfig;
+      provider.configured = isCloudProviderConfigured(provider);
+      try {
+        await persistCloudProviderConfigs();
+      } catch (error) {
+        provider.config = previousConfig;
+        provider.configured = isCloudProviderConfigured(provider);
+        showToast(error.message, 'error');
+        return;
+      }
+      state.cloudConfigError = null;
+      state.connectionTestResult = null;
+      render();
+      showToast(`${provider.name} erişim bilgileri temizlendi.`);
     }
     if (action === 'test-active-cloud' || action === 'test-connection' || action === 'test-connection-from-cloud') {
       await runConnectionTest();
@@ -1800,10 +1979,9 @@ async function testS3Connection(config) {
   }
   const endpoint = config.s3Endpoint.trim().replace(/\/+$/, '');
   try {
-    const parsed = new URL(endpoint);
-    if (parsed.protocol !== 'https:' && parsed.protocol !== 'http:') throw new Error();
+    parseCloudEndpoint(endpoint);
   } catch {
-    throw new Error('Geçersiz Uç Nokta URL adresi.');
+    throw new Error('Geçersiz uç nokta. HTTPS kullanın; HTTP yalnızca yerel MinIO için kullanılabilir.');
   }
 
   const bucket = config.s3Bucket.trim();
@@ -1825,9 +2003,9 @@ async function testS3Connection(config) {
 
     if (response.ok) {
       let providerName = 'S3 Uyumlu Depolama';
-      if (endpoint.includes('filebase.')) providerName = 'Filebase (5 GB Free · Kartsız)';
-      else if (endpoint.includes('r2.cloudflarestorage.com')) providerName = 'Cloudflare R2 (10 GB Free + 0$ Egress)';
-      else if (endpoint.includes('backblazeb2.com')) providerName = 'Backblaze B2 (10 GB Free)';
+      if (endpoint.includes('filebase.')) providerName = 'Filebase';
+      else if (endpoint.includes('r2.cloudflarestorage.com')) providerName = 'Cloudflare R2';
+      else if (endpoint.includes('backblazeb2.com')) providerName = 'Backblaze B2';
       else if (endpoint.includes('localhost') || endpoint.includes('127.0.0.1')) providerName = 'Yerel MinIO';
 
       return {
@@ -1879,12 +2057,9 @@ async function testSupabaseConnection(config) {
   }
   const url = config.url.trim().replace(/\/+$/, '');
   try {
-    const parsed = new URL(url);
-    if (parsed.protocol !== 'https:' && parsed.hostname !== 'localhost') {
-      throw new Error();
-    }
+    parseCloudEndpoint(url);
   } catch {
-    throw new Error('Geçersiz Proje URL adresi. "https://proje-id.supabase.co" biçiminde olmalıdır.');
+    throw new Error('Geçersiz Proje URL adresi. HTTPS kullanın; HTTP yalnızca yerel geliştirme için kullanılabilir.');
   }
 
   const bucket = config.bucket.trim();
@@ -2033,6 +2208,7 @@ async function uploadClip(id, button) {
 
     if (isS3) {
       const endpoint = config.s3Endpoint.trim().replace(/\/+$/, '');
+      parseCloudEndpoint(endpoint);
       const bucket = config.s3Bucket.trim();
       const objectKey = `clips/${filename}`;
       const uploadUrl = `${endpoint}/${encodeURIComponent(bucket)}/${objectKey}`;
@@ -2062,7 +2238,7 @@ async function uploadClip(id, button) {
       }
 
       clip.uploadedAt = Date.now();
-      clip.cloudProvider = 's3';
+      clip.cloudProvider = activeProvider.id;
       await databaseRequest('readwrite', 'put', clip);
       await loadClips();
       let providerName = 'S3 bulut';
@@ -2071,6 +2247,7 @@ async function uploadClip(id, button) {
       else if (endpoint.includes('backblazeb2.com')) providerName = 'Backblaze B2';
       showToast(`Klip ${providerName} alanına başarıyla aktarıldı. Yerel kopya korunuyor.`, 'success');
     } else {
+      parseCloudEndpoint(config.url);
       const objectPath = `clips/${filename}`;
       const endpoint = `${config.url.replace(/\/+$/, '')}/storage/v1/object/${encodeURIComponent(config.bucket.trim())}/${objectPath.split('/').map(encodeURIComponent).join('/')}`;
 
@@ -2140,6 +2317,13 @@ document.addEventListener('keydown', (event) => {
 });
 
 async function initialize() {
+  try {
+    await loadCloudProviderConfigs();
+  } catch (error) {
+    state.cloudConfigError = error.message;
+    console.error('Bulut sağlayıcı ayarları yüklenemedi:', error);
+  }
+
   try {
     state.db = await openDatabase();
   } catch (error) {

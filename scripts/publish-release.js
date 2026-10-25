@@ -20,13 +20,15 @@ if (!TOKEN) {
 const OWNER = 'zenxy177';
 const REPO = 'Vexel-Clip';
 const TAG = `v${pkg.version}`;
-const NAME = `Velex Clip v${pkg.version} - Özel Kayıt Kalitesi (Custom FPS, Çözünürlük & Bitrate)`;
+const NAME = `Velex Clip v${pkg.version} - Güvenli Bulut Ayarları`;
 const BODY = `### Velex Clip v${pkg.version} Sürüm Notları
-- 🎛️ **Özel (Custom) Kayıt Kalitesi & İnce Ayar Paneli**: Kullanıcılar artık sabit ayarlara bağlı kalmadan diledikleri FPS (15-240 FPS), serbest çözünürlük (genişlik × yükseklik px) ve veri hızını (1-100 Mbps) özgürce belirleyebilir.
-- ⚡ **1 Tıkla Hazır Kalite Profilleri**: Mevcut 120 FPS, 60 FPS, 30 FPS, Kaynak, 1440p (2K), 1080p, 720p ve 20/12/8/5/2.5 Mbps hazır seçenekler korunarak anında geçiş imkanı sağlandı.
-- 🎯 **Hızlı Seçim Çipleri**: 75/90/144/165/240 FPS, 2K/1080p/720p/9:16 Dikey/1:1 Kare ve 10M/16M/25M/50M/75M hızlı çipleriyle tek tıkla yapılandırma.
-- 📊 **Canlı Boyut Tahmini**: Girilen bitrate değerine göre dakika başına tahmini dosya boyutu (~MB/dk) anlık hesaplanıp gösterilir.
-- 🔄 **Doğrudan Donanım & Encoder Entegrasyonu**: Özel çözünürlük ve kare hızı doğrudan MediaDevices ve MediaRecorder video akışına aktarılır.`;
+- 🔐 Windows masaüstü uygulamasında bulut sağlayıcı bilgileri Windows kullanıcı hesabına bağlı şifrelemeyle cihazda saklanır ve uygulama yeniden açıldığında kullanılabilir.
+- 🔄 Önceki sürümde bu oturum için kaydedilen bulut ayarları ilk açılışta şifreli yerel depoya taşınır.
+- 🛡️ Bulut bağlantı uç noktaları HTTPS kullanır; HTTP yalnızca yerel geliştirme adresleri için kabul edilir.
+- 🧰 Bulut ayarlarını kaydetme ve temizleme hatalarında önceki geçerli ayarlar korunur.
+- 📚 Güvenli saklama sınırları ve bulut yapılandırması belgeleri güncellendi.
+
+Bulut erişim bilgileri uygulama kaynak koduna eklenmez. Tarayıcı sürümünde bilgiler yalnızca sekme oturumunda tutulur.`;
 
 async function publish() {
   const headers = {

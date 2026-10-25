@@ -1,6 +1,6 @@
 {
   "schemaVersion": 2,
-  "generatedAt": "2026-10-24T21:27:35.323Z",
+  "generatedAt": "2026-10-25T20:24:00.000Z",
   "title": "Design System: Velex Clip",
   "extensions": {
     "colorMeta": {
@@ -57,6 +57,24 @@
         "displayName": "Signal Green",
         "canonical": "#3c8e6e",
         "tonalRamp": ["#010f08", "#02291b", "#014631", "#006548", "#2f8363", "#51a281", "#80d1ae", "#c1ffe2"]
+      },
+      "graphite": {
+        "role": "neutral",
+        "displayName": "Graphite",
+        "canonical": "#0d1117",
+        "tonalRamp": ["#07090c", "#0d1117", "#121822", "#161f2e", "#243245", "#798ea6", "#c9d7e8", "#f0f6fc"]
+      },
+      "brand-cyan": {
+        "role": "secondary",
+        "displayName": "Brand Cyan",
+        "canonical": "#38bdf8",
+        "tonalRamp": ["#082f49", "#075985", "#0369a1", "#0284c7", "#0ea5e9", "#38bdf8", "#7dd3fc", "#e0f2fe"]
+      },
+      "brand-indigo": {
+        "role": "secondary",
+        "displayName": "Brand Indigo",
+        "canonical": "#818cf8",
+        "tonalRamp": ["#1e1b4b", "#312e81", "#3730a3", "#4338ca", "#6366f1", "#818cf8", "#a5b4fc", "#e0e7ff"]
       }
     },
     "typographyMeta": {
@@ -177,10 +195,10 @@
   ],
   "narrative": {
     "northStar": "The Rewind Bench",
-    "overview": "Velex Clip's interface reads as a compact recording instrument set into a warm-silver workbench. Ink-blue labels organize the controls; a ruled rewind track, elapsed-time readout, source viewfinder, and one signal-orange save action make the capture state legible before the clip becomes a library item. The metaphor comes from the implemented bench and ruler, not a decorative dashboard skin.\n\nThe capture workspace gives the live source and rewind instrument priority, with the save action beside the source controls. The clip library, trim dialog, and optional cloud setup use the same quiet surfaces, fine rules, compact labels, and restrained color signals. In browser mode, capture is permissioned and page-scoped. The Windows desktop mode extends the same capture task with a native source picker, global shortcut, and system tray.",
+    "overview": "Velex Clip's default interface is a dark graphite capture station with cyan and indigo brand facets, blue wayfinding, and a restrained orange save signal. A paper-light theme is available as an alternative. The ruled rewind track, elapsed-time readout, source viewfinder, and save action keep capture state legible before a clip becomes a library item.\n\nThe capture workspace gives the live source and rewind instrument priority. The library, editing, optional user-configured cloud setup, and update controls use the same compact tool-interface language. Browser capture is permissioned and page-scoped; the Windows desktop mode adds a native source picker, global shortcut, and system tray.",
     "keyCharacteristics": [
       "Instrument-first capture bench, not a gallery-first dashboard.",
-      "Warm-silver surfaces, ink-blue wayfinding, and a scarce signal-orange action.",
+      "Dark graphite default with cyan/indigo branding, blue wayfinding, and an optional paper-light theme.",
       "Fine rules, compact monospaced instrument labels, and mostly flat rectangular panels."
     ],
     "rules": [
@@ -202,7 +220,7 @@
     ],
     "dos": [
       "Do keep the source view, rewind ruler, duration control, and save action together in the capture bench.",
-      "Do use `colors.signal-orange` for the save signal and `colors.ink-blue` for selection and wayfinding.",
+      "Do use the orange signal for capture/save and blue for selection and wayfinding.",
       "Do use fine rules and tonal surfaces before introducing depth.",
       "Do preserve Turkish interface copy and the browser permission/page-focus limitations in any capture-state guidance.",
       "Do keep local clip review and trimming visually coherent with the capture workbench."
@@ -211,7 +229,8 @@
       "Don't replace the capture-first workspace with a gallery-first dashboard.",
       "Don't spread orange across large surfaces or use it as a decorative accent.",
       "Don't imply background recording or a global shortcut in browser mode; those behaviors are available only in the Windows desktop app.",
-      "Don't imply cloud storage is ready by default; connection setup is optional and user-configured.",
+      "Don't imply cloud storage is ready by default; users configure their own provider credentials.",
+      "Don't embed shared cloud credentials or server secrets in client code.",
       "Don't use shadows on ordinary resting panels or round every edge into a pill."
     ]
   }

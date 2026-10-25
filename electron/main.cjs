@@ -1,5 +1,7 @@
-const { app, BrowserWindow, desktopCapturer, globalShortcut, ipcMain, Menu, nativeImage, session, shell, Tray } = require('electron');
+const { app, BrowserWindow, desktopCapturer, globalShortcut, ipcMain, Menu, nativeImage, safeStorage, session, shell, Tray } = require('electron');
 const { autoUpdater } = require('electron-updater');
+const { randomUUID } = require('node:crypto');
+const fs = require('node:fs/promises');
 const path = require('node:path');
 
 const devServerUrl = 'http://127.0.0.1:5173';
@@ -16,6 +18,78 @@ let captureHandlerInstalled = false;
 function assertTrustedWindow(event) {
   if (!mainWindow || event.sender !== mainWindow.webContents) {
     throw new Error('Bu işlem yalnızca Velex Clip penceresinden kullanılabilir.');
+  }
+}
+
+const CLOUD_CONFIG_FIELDS = {
+  filebase: ['provider', 's3Endpoint', 's3Bucket', 's3Region', 's3AccessKeyId', 's3SecretAccessKey', 's3PublicUrl'],
+  r2: ['provider', 's3Endpoint', 's3Bucket', 's3Region', 's3AccessKeyId', 's3SecretAccessKey', 's3PublicUrl'],
+  b2: ['provider', 's3Endpoint', 's3Bucket', 's3Region', 's3AccessKeyId', 's3SecretAccessKey', 's3PublicUrl'],
+  supabase: ['provider', 'url', 'apiKey', 'bucket', 'accessToken'],
+};
+
+function validateCloudConfigs(configs) {
+  if (!configs || typeof configs !== 'object' || Array.isArray(configs)) {
+    throw new Error('Bulut ayarları geçersiz biçimde gönderildi.');
+  }
+  const sanitized = {};
+  for (const [providerId, fields] of Object.entries(CLOUD_CONFIG_FIELDS)) {
+    const config = configs[providerId];
+    if (config === undefined) continue;
+    if (!config || typeof config !== 'object' || Array.isArray(config)) {
+      throw new Error(`${providerId} bulut ayarları geçersiz.`);
+    }
+    sanitized[providerId] = {};
+    for (const field of fields) {
+      if (config[field] === undefined) continue;
+      if (typeof config[field] !== 'string' || config[field].length > 8192) {
+        throw new Error(`${providerId} bulut ayarlarında geçersiz bir değer var.`);
+      }
+      sanitized[providerId][field] = config[field];
+    }
+  }
+  return sanitized;
+}
+
+function cloudConfigPath() {
+  return path.join(app.getPath('userData'), 'cloud-configs.enc');
+}
+
+function ensureSecureStorage() {
+  if (!safeStorage.isEncryptionAvailable()) {
+    throw new Error('Windows güvenli kasa kullanılamıyor; bulut bilgileri kaydedilmedi.');
+  }
+}
+
+async function readCloudConfigs() {
+  ensureSecureStorage();
+  let encrypted;
+  try {
+    encrypted = await fs.readFile(cloudConfigPath(), 'utf8');
+  } catch (error) {
+    if (error.code === 'ENOENT') return {};
+    throw new Error(`Şifreli bulut ayarları okunamadı: ${error.message}`);
+  }
+  try {
+    return validateCloudConfigs(JSON.parse(safeStorage.decryptString(Buffer.from(encrypted, 'base64'))));
+  } catch (error) {
+    throw new Error(`Şifreli bulut ayarları açılamadı: ${error.message}`);
+  }
+}
+
+async function writeCloudConfigs(configs) {
+  ensureSecureStorage();
+  const sanitized = validateCloudConfigs(configs);
+  const encrypted = safeStorage.encryptString(JSON.stringify(sanitized)).toString('base64');
+  const filePath = cloudConfigPath();
+  const tempPath = `${filePath}.${randomUUID()}.tmp`;
+  await fs.mkdir(path.dirname(filePath), { recursive: true });
+  try {
+    await fs.writeFile(tempPath, encrypted, { encoding: 'utf8', mode: 0o600 });
+    await fs.rename(tempPath, filePath);
+  } catch (error) {
+    await fs.rm(tempPath, { force: true }).catch(() => {});
+    throw new Error(`Şifreli bulut ayarları kaydedilemedi: ${error.message}`);
   }
 }
 
@@ -121,6 +195,17 @@ function setupAutoUpdater() {
 }
 
 function registerIpcHandlers() {
+  ipcMain.handle('cloud-config:read', async (event) => {
+    assertTrustedWindow(event);
+    return readCloudConfigs();
+  });
+
+  ipcMain.handle('cloud-config:write', async (event, configs) => {
+    assertTrustedWindow(event);
+    await writeCloudConfigs(configs);
+    return true;
+  });
+
   ipcMain.handle('capture:list-sources', async (event) => {
     assertTrustedWindow(event);
     return listCaptureSources();

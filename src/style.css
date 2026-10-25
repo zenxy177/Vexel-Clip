@@ -536,6 +536,12 @@ svg { width: 19px; height: 19px; fill: none; stroke: currentColor; stroke-width:
 .quality-card-head h2 { margin: 4px 0 0; font-size: 15px; font-weight: 700; letter-spacing: -.03em; color: var(--ink); }
 .quality-active-badge { display: inline-block; padding: 4px 8px; background: var(--blue-soft); border: 1px solid var(--line-strong); border-radius: 3px; color: var(--blue-text); font: 600 10px var(--mono); letter-spacing: .06em; white-space: nowrap; }
 .quality-card-desc { margin: 0 0 16px; color: var(--muted); font-size: 11px; line-height: 1.6; }
+.cloud-provider-config-form { margin-top: 18px; padding-top: 18px; border-top: 1px solid var(--line); }
+.cloud-provider-config-form h3 { margin: 4px 0 0; color: var(--ink); font-size: 14px; }
+.cloud-config-fields { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 12px; }
+.cloud-config-fields label { display: grid; gap: 6px; color: var(--muted); font-size: 10px; }
+.cloud-config-fields input { width: 100%; min-width: 0; min-height: 38px; padding: 0 10px; border: 1px solid var(--line-strong); border-radius: 3px; background: var(--bg-input); color: var(--ink); font: 11px var(--mono); }
+.cloud-config-warning { margin: 12px 0 0; color: var(--muted); font-size: 10px; line-height: 1.6; }
 .quality-grid { display: grid; gap: 16px; }
 .quality-group { display: grid; gap: 6px; }
 .quality-group-label { font: 700 9px var(--mono); color: var(--muted); letter-spacing: .08em; }
@@ -933,6 +939,7 @@ svg { width: 19px; height: 19px; fill: none; stroke: currentColor; stroke-width:
   .library-search-box { max-width: 100%; width: 100%; }
   .library-filter-group { flex-wrap: wrap; justify-content: space-between; gap: 8px; }
   .theme-btn-grid { grid-template-columns: 1fr; }
+  .cloud-config-fields { grid-template-columns: 1fr; }
 }
 
 @media (max-width: 460px) {
